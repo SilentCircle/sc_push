@@ -1,0 +1,92 @@
+@author Edwin Fine <efine@silentcircle.com>
+@copyright 2016 Silent Circle
+@version {@version}
+@title Push Notification Service Erlang API
+@reference For Apple Push technical information, see
+<a href="https://developer.apple.com/library/ios/#documentation/NetworkingInternet/Conceptual/RemoteNotificationsPG/">Local and Push Notification Programming Guide</a>.
+@reference For Google Cloud Messaging technical information, see
+<a href="http://developer.android.com/guide/google/gcm/index.html">Google Cloud Messaging</a>.
+
+@doc
+
+== Notification Properties ==
+
+Each notification service supports different capabilities. Given the choice
+between having a lowest common denominator interface for ease of use but
+little flexibility, or allowing access to all service-specific features,
+this API has chosen to do mostly the latter, with one ease-of-use exception:
+the `alert' property, which is common to all services and will map to
+the proper service-specific API. This carries the actual message text
+to be displayed in the notification.
+
+All other features such as badges, expiry times, and so on, must be provided
+in a service-specific container.
+
+=== Apple Push Service (APNS) ===
+
+<strong>TODO</strong>: Add APNS documentation.
+
+=== Google Cloud Messaging ===
+
+The description given is basically to show how to format the
+properties in Erlang.
+
+<dl>
+  <dt>`registration_ids'</dt>
+     <dd>List of binary strings. Each binary is a registration id
+     for an Android device+application. <strong>Required</strong>.
+     </dd>
+  <dt>`collapse_key'</dt>
+     <dd>`binary()'. (Binary string). Optional.</dd>
+  <dt>`delay_while_idle'</dt>
+     <dd>`boolean()'. Optional.</dd>
+  <dt>`time_to_live'</dt>
+     <dd>`integer()'. Optional.</dd>
+  <dt>`restricted_package_name'</dt>
+     <dd>`binary()'. (Binary string). Overrides default on server. Optional.</dd>
+  <dt>`dry_run'</dt>
+     <dd>`boolean()'. Optional (defaults to false)</dd>
+  <dt>`data'</dt>
+     <dd>Message payload data, which must be an
+         object (Erlang proplist) that is convertible to JSON. The correspondence between
+         the JSON and Erlang types are described in the table below.
+         <table class="with-borders">
+           <tr>
+             <th class="with-borders"><strong>JSON</strong></th>
+             <th class="with-borders"><strong>erlang</strong></th>
+           </tr>
+           <tr>
+             <td class="with-borders"> <code>number</code> </td>
+             <td class="with-borders"> <code>integer()</code> and <code>float()</code></td>
+           </tr>
+           <tr>
+             <td class="with-borders"> <code>string</code> </td>
+             <td class="with-borders"> <code>binary()</code> </td>
+           </tr>
+           <tr>
+             <td class="with-borders"> <code>true</code>, <code>false</code> and <code>null</code></td>
+             <td class="with-borders"> <code>true</code>, <code>false</code> and <code>null</code></td>
+           </tr>
+           <tr>
+             <td class="with-borders"> <code>array</code> </td>
+             <td class="with-borders"> <code>[]</code> and <code>[json()]</code></td>
+           </tr>
+           <tr>
+             <td class="with-borders"> <code>object</code> </td>
+             <td class="with-borders"> <code>[{}]</code> and <code>[{binary()</code> or <code>atom(), json()}]</code></td>
+           </tr>
+         </table>
+     </dd>
+</dl>
+==== Examples of GCM Notification proplists ====
+<ul>
+<li>Simplest Possible properties</li>
+```
+Notification = [
+    {'registration_ids', [<<"Your android app reg id">>]},
+    {'data', [{msg, <<"Would you like to play a game?">>}]}
+].
+'''
+<li>TODO - Add more examples</li>
+</ul>
+@end

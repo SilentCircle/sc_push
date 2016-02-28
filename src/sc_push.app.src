@@ -1,0 +1,41 @@
+{application, sc_push,
+    [
+        {description, "Silent Circle Push Notification Application"},
+        {vsn, {cmd, "echo `cat APP_VERSION`"}},
+        {registered, []},
+        {applications, [
+                kernel,
+                stdlib,
+                sasl,
+                crypto,
+                public_key,
+                ssl,
+                inets,
+                mnesia,
+                lager,
+                jsx,
+                sc_push_lib,
+                sc_util,
+                mochiweb,
+                webmachine
+            ]},
+        {mod, { sc_push_app, [
+                    sc_push,
+                    sc_push_sup,
+                    % Built-in "null" service modules
+                    sc_push_svc_null, % Service supervisor
+                    sc_push_svc_null_srv, % Service worker
+                    % Webmachine/REST stuff
+                    sc_push_wm_send_device,
+                    sc_push_wm_send_tag,
+                    sc_push_wm_send_svc_tok,
+                    sc_push_wm_send_svc_appid_tok,
+                    sc_push_reg_wm_service,
+                    sc_push_reg_wm_tag,
+                    sc_push_reg_wm_device,
+                    sc_push_wm_common,
+                    sc_push_wm_helper % webmachine helper
+                ]}},
+        {env, []}
+    ]
+}.

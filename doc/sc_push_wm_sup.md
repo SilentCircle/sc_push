@@ -7,8 +7,6 @@
 
 Supervisor for the webmachine part of the sc_push application.
 
-Copyright (c) 2013 Silent Circle, LLC.
-
 __Behaviours:__ [`supervisor`](supervisor.md).
 
 __Authors:__ Edwin Fine ([`efine@silentcircle.com`](mailto:efine@silentcircle.com)).

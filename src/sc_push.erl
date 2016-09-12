@@ -90,7 +90,6 @@ start() ->
     ensure_started(inets),
     _ = mnesia:create_schema([node()]),
     ensure_started(mnesia),
-    ensure_started(unsplit),
     ensure_started(mochiweb),
     ensure_started(webmachine),
     ensure_started(jsx),

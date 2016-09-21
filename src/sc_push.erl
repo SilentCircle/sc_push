@@ -475,9 +475,11 @@ get_registration_info_by_id(ID) ->
 %%--------------------------------------------------------------------
 send_notification(Mode, Notification, Opts) ->
     {RegOKs, RegErrs} = lookup_reg_info(Notification),
+    lager:debug("[~p:~B] RegOKs=~p, RegErrs=~p",
+                [send_notification, ?LINE, RegOKs, RegErrs]),
     CleanN = remove_props([service, token], Notification),
     Sends = [send_registered_one(Mode, CleanN, Reg, Opts)
-             || {ok, Reg} <- RegOKs],
+             || Reg <- RegOKs],
     Sends ++ case RegErrs of
         [] ->
             [];

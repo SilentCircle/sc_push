@@ -459,13 +459,14 @@ end_per_testcase_no_start_services(Config) ->
     end_per_testcase_common(Config).
 
 init_per_testcase_common(Config) ->
+    PrivDir = value(priv_dir, Config), % Standard CT variable
     (catch end_per_testcase_common(Config)),
+    ok = application:set_env(mnesia, dir, PrivDir),
     ok = mnesia:create_schema([node()]),
     ok = mnesia:start(),
     ensure_started(xmerl),
     ensure_started(mochiweb),
     ensure_started(webmachine),
-    ensure_started(unsplit),
     ensure_started(jsx),
     ensure_started(sc_util),
     ensure_started(sc_push_lib),
@@ -475,7 +476,6 @@ end_per_testcase_common(Config) ->
     application:stop(sc_push_lib),
     application:stop(sc_util),
     application:stop(jsx),
-    application:stop(unsplit),
     application:stop(webmachine),
     application:stop(mochiweb),
     ensure_started(xmerl),
@@ -664,7 +664,12 @@ check_reg_http(Method, {ok, {StatusLine, _Headers, Body}}) ->
     ct:log("HTTP ~p ~B ~s", [Method, StatusCode, ReasonPhrase]),
     true = (StatusCode >= 200 andalso StatusCode =< 299),
     ct:log("Body = ~s", [Body]),
-    jsx:decode(list_to_binary(Body));
+    case StatusCode of
+        204 -> % No content
+            [];
+        _ ->
+            jsx:decode(list_to_binary(Body))
+    end;
 check_reg_http(Method, {ok, {StatusCode, Body}}) ->
     ct:log("HTTP ~p ~B", [Method, StatusCode]),
     true = (StatusCode >= 200 andalso StatusCode =< 299),

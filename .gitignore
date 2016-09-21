@@ -1,7 +1,10 @@
 *.sw?
+.rebar3
+_build
+deps/
 doc/*.html
 doc/edoc-info
-test/*.beam
-logs/
-deps/
 ebin/
+logs/
+rebar3
+test/*.beam

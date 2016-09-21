@@ -1,121 +1,67 @@
-.PHONY: all compile doc clean test ct dialyzer dialyzer-build-plt typer \
-		shell distclean update-deps clean-common-test-data clean-doc-data \
-		rebuild stashdoc
+.PHONY: compile ct ct_clean dialyzer docclean distclean docs run xref clean info
 
-ERLFLAGS= -pa $(CURDIR)/.eunit \
-		  -pa $(CURDIR)/ebin \
-		  -pa $(CURDIR)/deps/*/ebin \
-		  -pa $(CURDIR)/test
+REBAR_PROFILE ?= default
+THIS_MAKEFILE := $(lastword $(MAKEFILE_LIST))
 
-INCLUDES := ./deps $(wildcard ./deps/*/include)
-SOURCES := $(wildcard ./src/*.erl)
+$(info $(THIS_MAKEFILE) is using REBAR_PROFILE=$(REBAR_PROFILE))
 
-#
-# Check for required packages
-#
-REQUIRED_PKGS := \
-	erl \
-	dialyzer
-
-_ := $(foreach pkg,$(REQUIRED_PACKAGES),\
-		$(if $(shell which $(pkg)),\
-			$(error Missing required package $(pkg)),))
-
+REBAR3_URL = https://s3.amazonaws.com/rebar3/rebar3
 ERLANG_VER=$(shell erl -noinput -eval 'io:put_chars(erlang:system_info(system_version)),halt().')
 
-APP := sc_push
-README_URL := https://code.silentcircle.org/projects/SCPS/repos/$(APP)
-DEPS_PLT=$(CURDIR)/.deps_plt
-DIALYZER_WARNINGS = -Wunmatched_returns -Werror_handling -Wrace_conditions
-DIALYZER_APPS = erts kernel stdlib sasl crypto public_key ssl mnesia inets
-
-# Prefer local rebar, if present
-
-ifneq (,$(wildcard ./rebar))
-    REBAR_PGM = `pwd`/rebar
-else
-    REBAR_PGM = rebar
+# If there is a rebar in the current directory, use it
+ifeq ($(wildcard rebar3),rebar3)
+REBAR = $(CURDIR)/rebar3
 endif
 
-REBAR = $(REBAR_PGM)
-REBAR_VSN := $(shell $(REBAR) --version)
+# Fallback to rebar on PATH
+REBAR ?= $(shell which rebar3)
 
-all: deps compile test
+# And finally, prep to download rebar if all else fails
+ifeq ($(REBAR),)
+REBAR = $(CURDIR)/rebar3
+endif
+
+all: compile
 
 info:
 	@echo 'Erlang/OTP system version: $(ERLANG_VER)'
 	@echo '$(REBAR_VSN)'
 
-compile: deps
-	$(REBAR) compile
+compile: $(REBAR)
+	$(REBAR) do clean, compile
 
-doc: clean-doc-data compile
-	$(REBAR) skip_deps=true doc
+clean: $(REBAR) docclean
+	$(REBAR) clean
 
-stashdoc: clean-doc-data compile
-	EDOWN_TARGET=stash EDOWN_TOP_LEVEL_README_URL=$(README_URL) $(REBAR) skip_deps=true doc
+ct: $(REBAR)
+	REBAR_DIR=$(CURDIR) $(REBAR) do clean, ct --readable
 
-deps: info
-	$(REBAR) get-deps
+ct_clean:
+	@rm -rf _build/test/logs/
+	@rm -rf _build/test/cover/
 
-update-deps: info
-	$(REBAR) update-deps
+dialyzer: $(REBAR)
+	$(REBAR) dialyzer
 
-ct:
-	$(REBAR) skip_deps=true ct
+docclean:
+	@rm -rf doc/*.html doc/edoc-info html/
 
-dialyzer: compile $(DEPS_PLT)
-	dialyzer \
-		--fullpath \
-		--plt $(DEPS_PLT) \
-		$(DIALYZER_WARNINGS) \
-		-r ./ebin
+distclean: clean
+	@rm -rf _build log logs .test sasl_error.log
+	@rm -rf doc/*.html doc/edoc-info html/
+	@rm -rf Mnesia.*/
 
-$(DEPS_PLT):
-	@echo Building local plt at $(DEPS_PLT)
-	@echo
-	dialyzer \
-		--build_plt \
-		--output_plt $(DEPS_PLT) \
-		--apps $(DIALYZER_APPS) \
-		-r deps
+docs: $(REBAR)
+	$(REBAR) edoc
 
-dialyzer-add-to-plt: $(DEPS_PLT)
-	@echo Adding to local plt at $(DEPS_PLT)
-	@echo
-	dialyzer \
-		--add_to_plt \
-		--plt $(DEPS_PLT) \
-		--output_plt $(DEPS_PLT) \
-		--apps $(DIALYZER_APPS) \
-		-r deps
+stashdoc: $(REBAR)
+	EDOWN_TARGET=stash EDOWN_TOP_LEVEL_README_URL=$(README_URL) $(REBAR) docs
 
-test: dialyzer ct
+xref: $(REBAR)
+	$(REBAR) xref
 
-shell: deps
-	@erl $(ERLFLAGS)
-
-typer:
-	typer --plt $(DEPS_PLT) $(patsubst %, -I %, $(INCLUDES)) -r ./src
-
-xref: all
-	$(REBAR) xref skip_deps=true
-
-clean-common-test-data:
-	- rm -rf $(CURDIR)/test/*.beam
-	- rm -rf $(CURDIR)/logs
-
-clean-doc-data:
-	- rm -f $(CURDIR)/doc/*.html
-	- rm -f $(CURDIR)/doc/edoc-info
-
-clean: clean-common-test-data
-	- rm -rf $(CURDIR)/ebin
-	$(REBAR) skip_deps=true clean
-
-distclean: clean clean-doc-data
-	- rm -rf $(DEPS_PLT)
-	- rm -rf .rebar/
-	- rm -rvf $(CURDIR)/deps
+$(REBAR):
+	curl -s -Lo rebar3 $(REBAR3_URL) || wget $(REBAR3_URL)
+	chmod a+x $(REBAR)
 
 # ex: ts=4 sts=4 sw=4 noet

@@ -9,8 +9,6 @@
 webmachine resource that handles the push notification component
 of the REST API.
 
-Copyright (c) 2013 Silent Circle, LLC.
-
 __Authors:__ Edwin Fine ([`efine@silentcircle.com`](mailto:efine@silentcircle.com)).
 
 <a name="description"></a>

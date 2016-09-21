@@ -8,8 +8,6 @@
 
 webmachine helper functions.
 
-Copyright (c) 2013 Silent Circle, LLC.
-
 __Authors:__ Edwin Fine ([`efine@silentcircle.com`](mailto:efine@silentcircle.com)).
 
 <a name="description"></a>

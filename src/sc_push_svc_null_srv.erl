@@ -75,7 +75,14 @@
 %%%===================================================================
 %%% API
 %%%===================================================================
--export([start/2, start_link/2, stop/1, send/2, send/3, get_state/1]).
+-export([start/2,
+         start_link/2,
+         stop/1,
+         send/2,
+         send/3,
+         async_send/2,
+         async_send/3,
+         get_state/1]).
 
 %%--------------------------------------------------------------------
 %% @doc Start a named session as described by the options `Opts'.  The name
@@ -108,6 +115,29 @@ start_link(Name, Opts) when is_atom(Name), is_list(Opts) ->
 stop(SvrRef) ->
     gen_server:cast(SvrRef, stop).
 
+%%--------------------------------------------------------------------
+%% @equiv async_send(SvrRef, Notification, [])
+-spec async_send(SvrRef::term(), Notification::list()) ->
+       ok | {error, Reason::term()}.
+async_send(SvrRef, Notification) when is_list(Notification) ->
+    async_send(SvrRef, Notification, []).
+
+%%--------------------------------------------------------------------
+%% @doc Asynchronously send a notification specified by `Notification' via
+%% `SvrRef' with options `Opts'.
+%%
+%% === Parameters ===
+%%
+%% For parameter descriptions, see {@link send/3}.
+%% @end
+%%--------------------------------------------------------------------
+-spec async_send(term(), list(), list()) ->
+       ok | {error, Reason::term()}.
+async_send(SvrRef, Notification, Opts) when is_list(Notification),
+                                            is_list(Opts) ->
+    gen_server:cast(SvrRef, {async_send, Notification, Opts}).
+
+%%--------------------------------------------------------------------
 %% @equiv send(SvrRef, Notification, [])
 -spec send(SvrRef::term(), Notification::list()) ->
        {ok, Ref::term()} | {error, Reason::term()}.
@@ -117,12 +147,19 @@ send(SvrRef, Notification) when is_list(Notification) ->
 %%--------------------------------------------------------------------
 %% @doc Send a notification specified by `Notification' via `SvrRef'
 %% with options `Opts'.
+%%
 %% === Notification format ===
+%%
+%% ```
 %% [
 %%     {return, success | {error, term()}}, % default = success
 %% ]
+%% '''
+%%
 %% === Options ===
+%%
 %% Not currently supported, will accept any list.
+%%
 %% @end
 %%--------------------------------------------------------------------
 -spec send(term(), list(), list()) ->
@@ -227,6 +264,24 @@ handle_call(Request, _From, State) ->
     {noreply, NewState::term(), Timeout::timeout()} |
     {stop, Reason::term(), NewState::term()}
     .
+
+handle_cast({async_send, Notification, Opts},
+            #state{seq_no = Seq} = State0) ->
+    _ = lager:debug("async_send, Notification=~p, Opts=~p",
+                    [Notification, Opts]),
+    Self = self(),
+    State = case sc_util:val(return, Notification, success) of
+        success ->
+            NewSeq = Seq + 1,
+            _ = lager:info("async_send success, new seq: ~B", [NewSeq]),
+            schedule_cb(Self, Opts, NewSeq, ok),
+            State0#state{seq_no = NewSeq};
+        Error ->
+            _ = lager:info("async_send error: ~p", [Error]),
+            schedule_cb(Self, Opts, undefined, Error),
+            State0
+    end,
+    {noreply, State};
 
 handle_cast({do_callback, {Opts, Ref, Status}}, State) when is_list(Opts) ->
     ok = case proplists:get_value(callback, Opts) of

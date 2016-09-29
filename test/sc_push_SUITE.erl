@@ -229,6 +229,7 @@ groups() ->
             [],
             [
                 {group, clients},
+                {group, async_clients},
                 {group, rest_api}
             ]
         },
@@ -241,6 +242,13 @@ groups() ->
                 send_msg_test,
                 send_msg_fail_test,
                 send_msg_no_reg_test
+            ]
+        },
+        {
+            async_clients,
+            [],
+            [
+                async_send_msg_test
             ]
         },
         {
@@ -293,6 +301,7 @@ start_and_stop_from_config_test(Config) ->
     ok = fake_app_stop(sc_push_suite_fake_app),
     Config.
 
+%%--------------------------------------------------------------------
 start_and_stop_service_test() ->
     [].
 
@@ -308,6 +317,7 @@ start_and_stop_service_test(Config) ->
     deregister_ids(RegPL),
     Config.
 
+%%--------------------------------------------------------------------
 send_msg_test(doc) ->
     ["sc_push:send/1 should send a message to push"];
 send_msg_test(suite) ->
@@ -332,6 +342,7 @@ send_msg_test(Config) ->
     deregister_ids(RegPL),
     ok.
 
+%%--------------------------------------------------------------------
 send_msg_fail_test(doc) ->
     ["sc_push:send/1 should fail"];
 send_msg_fail_test(suite) ->
@@ -357,6 +368,7 @@ send_msg_fail_test(Config) ->
     deregister_ids(RegPL),
     ok.
 
+%%--------------------------------------------------------------------
 send_msg_no_reg_test(doc) ->
     ["sc_push:send/1 should fail with tag not found"];
 send_msg_no_reg_test(suite) ->
@@ -378,6 +390,32 @@ send_msg_no_reg_test(Config) ->
                 Errors = proplists:get_value(error, Results),
                 [{reg_not_found_for_tag, FakeTag}] = Errors,
                 ct:pal("Got expected error (reg_not_found_for_tag) from send notification~n", [])
+        end || Service <- Services
+    ],
+    deregister_ids(RegPL),
+    ok.
+
+%%--------------------------------------------------------------------
+async_send_msg_test(doc) ->
+    ["sc_push:async_send/1 should send a message to push"];
+async_send_msg_test(suite) ->
+    [];
+async_send_msg_test(Config) ->
+    RegPL = value(registration, Config),
+    ok = sc_push:register_ids([RegPL]),
+    Services = value(services, Config),
+    Notification0 = [
+        {alert, ?ALERT_MSG},
+        {tag, value(tag, RegPL)},
+        {return, success} % Will only work with sc_push_svc_null!
+    ],
+    [
+        begin
+                Svc = value(name, Service),
+                Notification = [{service, Svc} | Notification0],
+                Res = sc_push:async_send(Notification),
+                ct:pal("Sent notification, result = ~p~n", [Res]),
+                [ok] = Res
         end || Service <- Services
     ],
     deregister_ids(RegPL),

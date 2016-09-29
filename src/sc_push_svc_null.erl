@@ -26,7 +26,9 @@
     stop_session/1,
     get_session_pid/1,
     send/2,
-    send/3
+    send/3,
+    async_send/2,
+    async_send/3
     ]).
 
 %% Supervisor callbacks
@@ -43,6 +45,17 @@
     {I, {Mod, start_link, Args}, permanent, Timeout, Type, [Mod]}
 ).
 
+-define(DEFAULT_START_TIMEOUT, 5000).
+
+%% ===================================================================
+%% Types
+%% ===================================================================
+-type session_opt() :: {mod, atom()} |
+                       {name, atom()} |
+                       {config, proplists:proplist()}.
+-type session_config() :: [session_opt()].
+-type session_configs() :: [session_config()].
+
 %% ===================================================================
 %% API functions
 %% ===================================================================
@@ -53,14 +66,13 @@
 %% name, mod, and config keys.
 %% @end
 %%--------------------------------------------------------------------
+-spec start_link(Opts) -> Result when
+      Opts :: session_configs(), Result :: any().
 start_link(Opts) when is_list(Opts) ->
-    case supervisor:start_link({local, ?SERVER}, ?MODULE, Opts) of
-        {ok, _} = Res ->
-            Res;
-        Error ->
-            Error
-    end.
+    supervisor:start_link({local, ?SERVER}, ?MODULE, Opts).
 
+-spec start(Opts) -> Result when
+      Opts :: session_configs(), Result :: any().
 start(Opts) when is_list(Opts) ->
     case start_link(Opts) of
         {ok, Pid}  = Res ->
@@ -73,10 +85,12 @@ start(Opts) when is_list(Opts) ->
 stop(SupRef) ->
     exit(SupRef, shutdown).
 
--spec start_session(Opts::list()) ->
-    {ok, pid()} | {error, already_started} | {error, Reason::term()}.
+-spec start_session(Opts) -> Result when
+      Opts :: proplists:proplist(),
+      Result :: {ok, pid()} | {error, already_started} | {error, Reason},
+      Reason :: term().
 start_session(Opts) when is_list(Opts) ->
-    Timeout = sc_util:val(start_timeout, Opts, 5000),
+    Timeout = get_timeout(Opts),
     ChildSpec = sc_util:make_child_spec(Opts, Timeout),
     supervisor:start_child(?MODULE, ChildSpec).
 
@@ -115,7 +129,21 @@ send(Name, Notification) when is_list(Notification) ->
 -spec send(term(), sc_types:proplist(atom(), term()), list()) ->
     {ok, Ref::term()} | {error, Reason::term()}.
 send(Name, Notification, Opts) when is_list(Notification), is_list(Opts) ->
-    gen_server:call(Name, {send, Notification, Opts}).
+    sc_push_svc_null_srv:send(Name, Notification, Opts).
+
+%% @doc Asynchronously send notification to named session.
+-spec async_send(term(), sc_types:proplist(atom(), term())) ->
+    ok | {error, Reason::term()}.
+async_send(Name, Notification) when is_list(Notification) ->
+    Opts = [],
+    async_send(Name, Notification, Opts).
+
+%% @doc Asynchronously send notification to named session with options Opts.
+-spec async_send(term(), sc_types:proplist(atom(), term()), list()) ->
+    ok | {error, Reason::term()}.
+async_send(Name, Notification, Opts) when is_list(Notification),
+                                          is_list(Opts) ->
+    sc_push_svc_null_srv:async_send(Name, Notification, Opts).
 
 %% ===================================================================
 %% Supervisor callbacks
@@ -127,15 +155,11 @@ send(Name, Notification, Opts) when is_list(Notification), is_list(Opts) ->
 %% name, mod, and config keys.
 %% @end
 %%--------------------------------------------------------------------
--type init_opts() :: [session_config()].
--type session_config() :: [session_opt()].
--type session_opt() :: {mod, atom()} |
-                       {name, atom()} |
-                       {config, proplists:proplist()}.
+
 -spec init(Opts) -> Result
-    when Opts :: init_opts(),
-         Result :: {ok, {SupFlags, Children}},
-         SupFlags :: {'one_for_one', non_neg_integer(), non_neg_integer()},
+    when Opts :: session_configs(),
+         Result :: {ok, {SupFlags, Children}} | ignore,
+         SupFlags :: {'one_for_one', non_neg_integer(), pos_integer()},
          Children :: [{_,
                        {Mod :: atom(), 'start_link', Args :: [any()]},
                        'permanent', non_neg_integer(), 'worker', [atom()]
@@ -144,9 +168,12 @@ init(Opts) ->
     RestartStrategy    = one_for_one,
     MaxRestarts        = 10, % If there are more than this many restarts
     MaxTimeBetRestarts = 60, % In this many seconds, then terminate supervisor
-    Timeout = sc_util:val(start_timeout, Opts, 5000),
-
     SupFlags = {RestartStrategy, MaxRestarts, MaxTimeBetRestarts},
-    Children = [sc_util:make_child_spec(Sess, Timeout) || Sess <- Opts],
+    Children = make_child_specs(Opts),
     {ok, {SupFlags, Children}}.
 
+make_child_specs(Cfgs) ->
+    [sc_util:make_child_spec(Cfg, get_timeout(Cfg)) || Cfg <- Cfgs].
+
+get_timeout(Cfg) ->
+    sc_util:val(start_timeout, Cfg, ?DEFAULT_START_TIMEOUT).

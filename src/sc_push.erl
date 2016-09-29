@@ -36,6 +36,21 @@
                              'get_registration_info_by_svc_tok' |
                              'get_registration_info_by_tag'.
 
+-type reg_info() :: std_proplist().
+-type reg_info_list() :: [reg_info()].
+-type reg_ok() :: {ok, reg_info_list()}.
+-type reg_err_term() :: term().
+-type reg_err_list() :: [reg_err_term()].
+-type reg_err() :: {error, reg_err_term()}.
+-type reg_result() :: reg_ok() | reg_err().
+-type reg_results() :: [reg_result()].
+-type filtered_result() :: {reg_info_list(), reg_err_list()}.
+
+-type receiver_t() :: tag | svc_tok | device_id.
+-type receiver() :: {receiver_t(), list()}.
+-type receivers() :: [receiver()].
+-type receiver_regs() :: filtered_result().
+
 %%--------------------------------------------------------------------
 %% Defines
 %%--------------------------------------------------------------------
@@ -574,23 +589,17 @@ default_receivers(Notification) ->
 %%     }
 %% ].
 %%
-
--type reg_ok() :: {ok, std_proplist()}.
--type reg_err() :: {error, term()}.
--type reg_oks() :: list(reg_ok()).
--type reg_errs() :: list(reg_err()).
--type receiver_t() :: tag | svc_tok | device_id.
--type receiver() :: {receiver_t(), list()}.
--type reg_result() :: reg_ok() | reg_err().
--type filtered_result() :: {reg_oks(), reg_errs()}.
-
--spec get_receiver_regs(list(receiver())) -> filtered_result().
+%%--------------------------------------------------------------------
+-spec get_receiver_regs(Receivers) -> ReceiverRegs when
+      Receivers :: receivers(), ReceiverRegs :: receiver_regs().
 get_receiver_regs(Receivers) ->
-    filter_regs(lists:foldr(fun(Rcv, Acc) ->
-                                get_receiver_reg(Rcv) ++ Acc
+    filter_regs(lists:foldr(fun(Receiver, Acc) ->
+                                get_receiver_reg(Receiver) ++ Acc
                             end, [], Receivers)).
 
--spec get_receiver_reg(receiver()) -> [reg_result()].
+%%--------------------------------------------------------------------
+-spec get_receiver_reg(Receiver) -> RegResults when
+      Receiver :: receiver(), RegResults :: reg_results().
 get_receiver_reg({tag, Tags}) ->
     get_tags(Tags);
 get_receiver_reg({svc_tok, SvcToks}) ->
@@ -602,33 +611,44 @@ get_receiver_reg({device_id, IDs}) ->
 get_receiver_reg(Invalid) ->
     [{error, {invalid_receiver, Invalid}}].
 
--spec get_tags([binary()]) -> [reg_result()].
+%%--------------------------------------------------------------------
+-spec get_tags(Tags) -> RegResults when
+      Tags :: [Tag], RegResults :: reg_results(), Tag :: binary().
 get_tags(Tags) ->
     [get_reg(get_registration_info_by_tag,
              Tag,
              reg_not_found_for_tag) || Tag <- Tags].
 
--spec get_svc_toks([{atom(), binary()}]) -> [reg_result()].
+%%--------------------------------------------------------------------
+-spec get_svc_toks(SvcToks) -> RegResults when
+    SvcToks :: [{Svc, Tok}], RegResults :: reg_results(),
+    Svc :: atom(), Tok :: binary().
 get_svc_toks(SvcToks) ->
     [get_reg(get_registration_info_by_svc_tok,
              SvcTok,
              reg_not_found_for_svc_tok) || SvcTok <- SvcToks].
 
+%%--------------------------------------------------------------------
 %% Fake getting a registration since we have all the required reg info already
 %% (service, app_id, token).
 -spec get_svc_appid_toks([{Service, AppID, Token}]) -> Result
     when Service :: atom(), AppID :: binary(), Token :: binary(),
-         Result :: [reg_result()].
+         Result :: reg_results().
 get_svc_appid_toks(SvcAppIDToks) ->
     [make_reg_resp(Svc, AppID, Token) || {Svc, AppID, Token} <- SvcAppIDToks].
 
--spec get_device_ids([binary()]) -> [reg_result()].
+%%--------------------------------------------------------------------
+-spec get_device_ids(IDs) -> RegResults when
+      IDs :: [binary()], RegResults :: reg_results().
 get_device_ids(IDs) ->
     [get_reg(get_registration_info_by_device_id,
              ID,
              reg_not_found_for_device_id) || ID <- IDs].
 
--spec get_reg(reg_api_func_name(), term(), atom()) -> reg_result().
+%%--------------------------------------------------------------------
+-spec get_reg(FuncName, RegQuery, ErrType) -> RegResult when
+      FuncName :: reg_api_func_name(), RegQuery :: term(), ErrType :: atom(),
+      RegResult :: reg_result().
 get_reg(FuncName, RegQuery, ErrType) ->
     case sc_push_reg_api:FuncName(RegQuery) of
         notfound ->
@@ -637,22 +657,31 @@ get_reg(FuncName, RegQuery, ErrType) ->
             {ok, Reg}
     end.
 
+%%--------------------------------------------------------------------
+-spec make_reg_resp(Svc, AppID, Token) -> RegResp when
+      Svc :: atom(), AppID :: binary(), Token :: binary(),
+      RegResp :: reg_ok().
 make_reg_resp(Svc, AppID, Token) ->
     PL = [{service, Svc},
           {app_id, AppID},
           {token, Token}],
     {ok, [PL]}. %% Requires list of proplists
 
--spec filter_regs([reg_result()]) -> filtered_result().
-filter_regs(Regs) ->
+-spec filter_regs(RegResults) -> FilteredResult when
+      RegResults :: reg_results(), FilteredResult :: filtered_result().
+filter_regs(RegResults) ->
     {OKs, Errs} = lists:partition(fun({ok, _}) -> true;
                                      ({error, _}) -> false
-                                  end, Regs),
+                                  end, RegResults),
     FiltOKs = lists:usort(fun compare_tokens/2, flatten_results(OKs)),
     FiltErrs = lists:usort([Err || {error, Err} <- Errs]),
     {FiltOKs, FiltErrs}.
 
 -compile({inline, [{flatten_results, 1}]}).
+%% @doc Convert [{ok | error, term()}] to [term()]
+-spec flatten_results(Results) -> FlattenedResults when
+      Results :: [{atom(), list()}],
+      FlattenedResults :: list().
 flatten_results(Results) ->
     lists:append([L || {_, L} <- Results]).
 
@@ -662,5 +691,5 @@ compare_tokens(PL1, PL2) ->
 
 -compile({inline, [{get_svc_tok, 1}]}).
 get_svc_tok(PL) ->
-    {proplists:get_value(service, PL), proplists:get_value(token, PL)}.
+    {sc_util:req_val(service, PL), sc_util:req_val(token, PL)}.
 

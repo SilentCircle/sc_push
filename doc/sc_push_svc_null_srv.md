@@ -47,13 +47,42 @@ default = info
 ## Function Index ##
 
 
-<table width="100%" border="1" cellspacing="0" cellpadding="2" summary="function index"><tr><td valign="top"><a href="#send-2">send/2</a></td><td>Equivalent to <a href="#send-3"><tt>send(SvrRef, Notification, [])</tt></a>.</td></tr><tr><td valign="top"><a href="#send-3">send/3</a></td><td>Send a notification specified by <code>Notification</code> via <code>SvrRef</code>
+<table width="100%" border="1" cellspacing="0" cellpadding="2" summary="function index"><tr><td valign="top"><a href="#async_send-2">async_send/2</a></td><td>Equivalent to <a href="#async_send-3"><tt>async_send(SvrRef, Notification, [])</tt></a>.</td></tr><tr><td valign="top"><a href="#async_send-3">async_send/3</a></td><td>Asynchronously send a notification specified by <code>Notification</code> via
+<code>SvrRef</code> with options <code>Opts</code>.</td></tr><tr><td valign="top"><a href="#send-2">send/2</a></td><td>Equivalent to <a href="#send-3"><tt>send(SvrRef, Notification, [])</tt></a>.</td></tr><tr><td valign="top"><a href="#send-3">send/3</a></td><td>Send a notification specified by <code>Notification</code> via <code>SvrRef</code>
 with options <code>Opts</code>.</td></tr><tr><td valign="top"><a href="#start-2">start/2</a></td><td>Start a named session as described by the options <code>Opts</code>.</td></tr><tr><td valign="top"><a href="#start_link-2">start_link/2</a></td><td>Start a named session as described by the options <code>Opts</code>.</td></tr><tr><td valign="top"><a href="#stop-1">stop/1</a></td><td>Stop session.</td></tr></table>
 
 
 <a name="functions"></a>
 
 ## Function Details ##
+
+<a name="async_send-2"></a>
+
+### async_send/2 ###
+
+<pre><code>
+async_send(SvrRef::term(), Notification::list()) -&gt; ok | {error, Reason::term()}
+</code></pre>
+<br />
+
+Equivalent to [`async_send(SvrRef, Notification, [])`](#async_send-3).
+
+<a name="async_send-3"></a>
+
+### async_send/3 ###
+
+<pre><code>
+async_send(SvrRef::term(), Notification::list(), Opts::list()) -&gt; ok | {error, Reason::term()}
+</code></pre>
+<br />
+
+Asynchronously send a notification specified by `Notification` via
+`SvrRef` with options `Opts`.
+
+
+#### <a name="Parameters">Parameters</a> ####
+
+For parameter descriptions, see [`send/3`](#send-3).
 
 <a name="send-2"></a>
 
@@ -81,9 +110,11 @@ with options `Opts`.
 
 #### <a name="Notification_format">Notification format</a> ####
 
-[
-{return, success | {error, term()}}, % default = success
-]
+```
+  [
+      {return, success | {error, term()}}, % default = success
+  ]
+```
 
 
 #### <a name="Options">Options</a> ####

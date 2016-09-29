@@ -241,52 +241,80 @@ unregister_service(Name) when is_atom(Name) ->
 get_service_config(Service) ->
     sc_push_lib:get_service_config(Service).
 
-
 %%--------------------------------------------------------------------
 %% @doc Start named session as described in the options proplist `Opts'.
 %% `config' is service-dependent.
-%% == IMPORTANT NOTE ==
-%% `name' <strong>must</strong> be in the format `service-api_key', for
-%% example, if the service name is `apns', and the api_key is, in this case,
-%% `com.silentcircle.SilentText', then the session name must be
-%% `apns-com.silentcircle.SilentText'.
-%% === APNS Service ===
-%% ```
-%% [
-%%     {mod, 'sc_push_svc_apns'},
-%%     {name, 'apns-com.silentcircle.SilentText'},
-%%     {config, [
-%%         {host, "gateway.push.apple.com"},
-%%         {bundle_seed_id, <<"com.silentcircle.SilentText">>},
-%%         {bundle_id, <<"com.silentcircle.SilentText">>},
-%%         {ssl_opts, [
-%%             {certfile, "/etc/ejabberd/certs/com.silentcircle.SilentText.cert.pem"},
-%%             {keyfile,  "/etc/ejabberd/certs/com.silentcircle.SilentText.key.unencrypted.pem"}
-%%         ]}
-%%     ]}
-%% ]
-%% '''
-%% === GCM Service ===
-%% ```
-%% [
-%%     {mod, 'sc_push_svc_gcm'},
-%%     {name, 'gcm-com.silentcircle.silenttext'},
-%%     {config, [
-%%         {api_key, <<"AIzaSyCUIZhzjEQvb4wSlg6Uhi3OqLaC5vyv73w">>},
-%%         {ssl_opts, [
-%%             {verify, verify_none},
-%%             {reuse_sessions, true}
-%%         ]}
 %%
-%%         % Optional properties, showing default values
-%%         %{uri, "https://android.googleapis.com/gcm/send"}
-%%         %{restricted_package_name, <<>>}
-%%         %{max_attempts, 5}
-%%         %{retry_interval, 1}
-%%         %{max_req_ttl, 120}
-%%     ]}
+%% == IMPORTANT NOTE ==
+%%
+%% `name' <strong>must</strong> be in the format `service-api_key'.  For
+%% example, if the service name is `apns', and the `api_key' is, in this case,
+%% `com.example.SomeApp', then the session name must be
+%% `apns-com.example.SomeApp'.
+%%
+%% === APNS Service ===
+%%
+%% Note that the v2 service, `sc_push_svc_apns', is **deprecated**.
+%% Use `sc_push_svc_apnsv3' instead.
+%%
+%% ```
+%% [
+%%  {mod, 'sc_push_svc_apnsv3'},
+%%  {name, 'apnsv3-com.example.MyApp'},
+%%  {config,
+%%   [{host, "api.push.apple.com"},
+%%    {port, 443},
+%%    {apns_env, prod},
+%%    {bundle_seed_id, <<"com.example.MyApp">>},
+%%    {apns_topic, <<"com.example.MyApp">>},
+%%    {retry_delay, 1000},
+%%    {disable_apns_cert_validation, true},
+%%    {ssl_opts,
+%%     [{certfile, "/some/path/com.example.MyApp.cert.pem"},
+%%      {keyfile, "/some/path/com.example.MyApp.key.unencrypted.pem"},
+%%      {cacertfile, "/some/path/cacerts.crt"},
+%%      {honor_cipher_order, false},
+%%      {versions, ['tlsv1.2']},
+%%      {alpn_preferred_protocols, [<<"h2">>]}
+%%     ]
+%%    }
+%%   ]
+%%  }
 %% ]
 %% '''
+%%
+%% === GCM Service ===
+%%
+%% ```
+%% [
+%%  {mod, 'sc_push_svc_gcm'},
+%%  {name, 'gcm-com.example.SomeApp'},
+%%  {config,
+%%   [
+%%    %% Required GCM API key
+%%    {api_key, <<"ahsgdblahblahfjkjkjfdk">>},
+%%    %% Required, even if empty list. Defaults shown.
+%%    {ssl_opts, [
+%%                {verify, verify_peer},
+%%                {reuse_sessions, true}
+%%               ]},
+%%    %% Optional, defaults as shown.
+%%    {uri, "https://gcm-http.googleapis.com/gcm/send"},
+%%    %% Optional, omitted if missing.
+%%    {restricted_package_name, <<"my-android-pkg">>},
+%%    %% Maximum times to try to send and then give up.
+%%    {max_attempts, 10},
+%%    %% Starting point in seconds for exponential backoff.
+%%    %% Optional.
+%%    {retry_interval, 1},
+%%    %% Maximum seconds for a request to live in a retrying state.
+%%    {max_req_ttl, 3600},
+%%    %% Reserved for future use
+%%    {failure_action, fun(_)}
+%%   ]}
+%% ]
+%% '''
+%%
 %% @end
 %%--------------------------------------------------------------------
 -spec start_session(Service::atom(), Opts::list()) ->

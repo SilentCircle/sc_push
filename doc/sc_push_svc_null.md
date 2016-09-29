@@ -14,21 +14,21 @@ __Behaviours:__ [`supervisor`](supervisor.md).
 
 
 
-### <a name="type-init_opts">init_opts()</a> ###
-
-
-<pre><code>
-init_opts() = [<a href="#type-session_config">session_config()</a>]
-</code></pre>
-
-
-
-
 ### <a name="type-session_config">session_config()</a> ###
 
 
 <pre><code>
 session_config() = [<a href="#type-session_opt">session_opt()</a>]
+</code></pre>
+
+
+
+
+### <a name="type-session_configs">session_configs()</a> ###
+
+
+<pre><code>
+session_configs() = [<a href="#type-session_config">session_config()</a>]
 </code></pre>
 
 
@@ -46,12 +46,34 @@ session_opt() = {mod, atom()} | {name, atom()} | {config, <a href="proplists.md#
 ## Function Index ##
 
 
-<table width="100%" border="1" cellspacing="0" cellpadding="2" summary="function index"><tr><td valign="top"><a href="#get_session_pid-1">get_session_pid/1</a></td><td>Get pid of named session.</td></tr><tr><td valign="top"><a href="#init-1">init/1</a></td><td><code>Opts</code> is a list of proplists.</td></tr><tr><td valign="top"><a href="#send-2">send/2</a></td><td>Send notification to named session.</td></tr><tr><td valign="top"><a href="#send-3">send/3</a></td><td>Send notification to named session with options Opts.</td></tr><tr><td valign="top"><a href="#start-1">start/1</a></td><td></td></tr><tr><td valign="top"><a href="#start_link-1">start_link/1</a></td><td><code>Opts</code> is a list of proplists.</td></tr><tr><td valign="top"><a href="#start_session-1">start_session/1</a></td><td></td></tr><tr><td valign="top"><a href="#stop-1">stop/1</a></td><td></td></tr><tr><td valign="top"><a href="#stop_session-1">stop_session/1</a></td><td>Stop named session.</td></tr></table>
+<table width="100%" border="1" cellspacing="0" cellpadding="2" summary="function index"><tr><td valign="top"><a href="#async_send-2">async_send/2</a></td><td>Asynchronously send notification to named session.</td></tr><tr><td valign="top"><a href="#async_send-3">async_send/3</a></td><td>Asynchronously send notification to named session with options Opts.</td></tr><tr><td valign="top"><a href="#get_session_pid-1">get_session_pid/1</a></td><td>Get pid of named session.</td></tr><tr><td valign="top"><a href="#init-1">init/1</a></td><td><code>Opts</code> is a list of proplists.</td></tr><tr><td valign="top"><a href="#send-2">send/2</a></td><td>Send notification to named session.</td></tr><tr><td valign="top"><a href="#send-3">send/3</a></td><td>Send notification to named session with options Opts.</td></tr><tr><td valign="top"><a href="#start-1">start/1</a></td><td></td></tr><tr><td valign="top"><a href="#start_link-1">start_link/1</a></td><td><code>Opts</code> is a list of proplists.</td></tr><tr><td valign="top"><a href="#start_session-1">start_session/1</a></td><td></td></tr><tr><td valign="top"><a href="#stop-1">stop/1</a></td><td></td></tr><tr><td valign="top"><a href="#stop_session-1">stop_session/1</a></td><td>Stop named session.</td></tr></table>
 
 
 <a name="functions"></a>
 
 ## Function Details ##
+
+<a name="async_send-2"></a>
+
+### async_send/2 ###
+
+<pre><code>
+async_send(Name::term(), Notification::<a href="sc_types.md#type-proplist">sc_types:proplist</a>(atom(), term())) -&gt; ok | {error, Reason::term()}
+</code></pre>
+<br />
+
+Asynchronously send notification to named session.
+
+<a name="async_send-3"></a>
+
+### async_send/3 ###
+
+<pre><code>
+async_send(Name::term(), Notification::<a href="sc_types.md#type-proplist">sc_types:proplist</a>(atom(), term()), Opts::list()) -&gt; ok | {error, Reason::term()}
+</code></pre>
+<br />
+
+Asynchronously send notification to named session with options Opts.
 
 <a name="get_session_pid-1"></a>
 
@@ -72,7 +94,7 @@ Get pid of named session.
 init(Opts) -&gt; Result
 </code></pre>
 
-<ul class="definitions"><li><code>Opts = <a href="#type-init_opts">init_opts()</a></code></li><li><code>Result = {ok, {SupFlags, Children}}</code></li><li><code>SupFlags = {one_for_one, non_neg_integer(), non_neg_integer()}</code></li><li><code>Children = [{term(), {Mod::atom(), start_link, Args::[any()]}, permanent, non_neg_integer(), worker, [atom()]}]</code></li></ul>
+<ul class="definitions"><li><code>Opts = <a href="#type-session_configs">session_configs()</a></code></li><li><code>Result = {ok, {SupFlags, Children}} | ignore</code></li><li><code>SupFlags = {one_for_one, non_neg_integer(), pos_integer()}</code></li><li><code>Children = [{term(), {Mod::atom(), start_link, Args::[any()]}, permanent, non_neg_integer(), worker, [atom()]}]</code></li></ul>
 
 `Opts` is a list of proplists.
 Each proplist is a session definition containing
@@ -104,13 +126,21 @@ Send notification to named session with options Opts.
 
 ### start/1 ###
 
-`start(Opts) -> any()`
+<pre><code>
+start(Opts) -&gt; Result
+</code></pre>
+
+<ul class="definitions"><li><code>Opts = <a href="#type-session_configs">session_configs()</a></code></li><li><code>Result = any()</code></li></ul>
 
 <a name="start_link-1"></a>
 
 ### start_link/1 ###
 
-`start_link(Opts) -> any()`
+<pre><code>
+start_link(Opts) -&gt; Result
+</code></pre>
+
+<ul class="definitions"><li><code>Opts = <a href="#type-session_configs">session_configs()</a></code></li><li><code>Result = any()</code></li></ul>
 
 `Opts` is a list of proplists.
 Each proplist is a session definition containing
@@ -121,9 +151,10 @@ name, mod, and config keys.
 ### start_session/1 ###
 
 <pre><code>
-start_session(Opts::list()) -&gt; {ok, pid()} | {error, already_started} | {error, Reason::term()}
+start_session(Opts) -&gt; Result
 </code></pre>
-<br />
+
+<ul class="definitions"><li><code>Opts = <a href="proplists.md#type-proplist">proplists:proplist()</a></code></li><li><code>Result = {ok, pid()} | {error, already_started} | {error, Reason}</code></li><li><code>Reason = term()</code></li></ul>
 
 <a name="stop-1"></a>
 

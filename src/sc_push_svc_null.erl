@@ -24,6 +24,7 @@
     stop/1,   % For testing only
     start_session/1,
     stop_session/1,
+    quiesce_session/1,
     get_session_pid/1,
     send/2,
     send/3,
@@ -83,7 +84,7 @@ start(Opts) when is_list(Opts) ->
     end.
 
 stop(SupRef) ->
-    exit(SupRef, shutdown).
+    exit(SupRef, quiesce).
 
 -spec start_session(Opts) -> Result when
       Opts :: proplists:proplist(),
@@ -109,6 +110,20 @@ stop_session(Name) when is_atom(Name) ->
         Error ->
             Error
     end.
+
+%%--------------------------------------------------------------------
+%% @doc Quiesce named session.
+%% This signals the session to prepare for shutdown by refusing to
+%% accept any more notifications, but still servicing in-flight
+%% requests.
+%% @end
+%%--------------------------------------------------------------------
+
+%% TODO: COmplete this function.
+-spec quiesce_session(Name) -> Result when
+      Name :: atom(), Result:: ok | {error, Reason}, Reason :: term().
+quiesce_session(Name) when is_atom(Name) ->
+    {error, nyi}.
 
 %%--------------------------------------------------------------------
 %% @doc Get pid of named session.

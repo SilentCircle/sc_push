@@ -35,7 +35,13 @@
 -spec send_push(sc_types:proplist(atom(), string() | binary()))
     -> {ok, term()} | {error, binary()}.
 send_push(Props) ->
-    try sc_push:async_send(Props) of
+    % Opts = [{callback,
+    % fun(Nf,Req,Res) ->
+    %          io:format("~p\n~p\n~p\n", [Nf,Req,Res]) end}]
+    Opts = [{callback, fun(_Nf, _Req, _Res) -> ok end}],
+    try sc_push:async_send(Props, Opts) of
+        [{ok, {Sts, UUID}}] when is_atom(Sts) ->
+            {ok, [{ok, [{status, Sts}, {id, UUID}]}]};
         [{error, _Reason}] = Error  ->
             {ok, Error};
         Results ->
@@ -74,6 +80,8 @@ results_to_json(Results) ->
 
 result_to_json(ok) ->
     <<"queued">>;
+result_to_json({ok, [{_,_}|_]=EJSON}) ->
+    EJSON;
 result_to_json({ok, Ref}) ->
     [{id, encode_ref(Ref)}];
 result_to_json({error, Error}) ->

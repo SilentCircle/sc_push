@@ -42,6 +42,15 @@ opt() = {log_dest, {file, string()}} | {log_level, off | info}
 
 default = info
 
+
+
+### <a name="type-uuid">uuid()</a> ###
+
+
+<pre><code>
+uuid() = binary()
+</code></pre>
+
 <a name="index"></a>
 
 ## Function Index ##
@@ -61,7 +70,7 @@ with options <code>Opts</code>.</td></tr><tr><td valign="top"><a href="#start-2"
 ### async_send/2 ###
 
 <pre><code>
-async_send(SvrRef::term(), Notification::list()) -&gt; ok | {error, Reason::term()}
+async_send(SvrRef::term(), Notification::list()) -&gt; {ok, {submitted, <a href="#type-uuid">uuid()</a>}} | {error, {<a href="#type-uuid">uuid()</a>, term()}}
 </code></pre>
 <br />
 
@@ -72,7 +81,7 @@ Equivalent to [`async_send(SvrRef, Notification, [])`](#async_send-3).
 ### async_send/3 ###
 
 <pre><code>
-async_send(SvrRef::term(), Notification::list(), Opts::list()) -&gt; ok | {error, Reason::term()}
+async_send(SvrRef::term(), Notification::list(), Opts::list()) -&gt; {ok, {submitted, <a href="#type-uuid">uuid()</a>}} | {error, {<a href="#type-uuid">uuid()</a>, term()}}
 </code></pre>
 <br />
 
@@ -89,7 +98,7 @@ For parameter descriptions, see [`send/3`](#send-3).
 ### send/2 ###
 
 <pre><code>
-send(SvrRef::term(), Notification::list()) -&gt; {ok, Ref::term()} | {error, Reason::term()}
+send(SvrRef::term(), Notification::list()) -&gt; {ok, {<a href="#type-uuid">uuid()</a>, list()}} | {error, {<a href="#type-uuid">uuid()</a>, {Reason::term()}}}
 </code></pre>
 <br />
 
@@ -100,7 +109,7 @@ Equivalent to [`send(SvrRef, Notification, [])`](#send-3).
 ### send/3 ###
 
 <pre><code>
-send(SvrRef::term(), Notification::list(), Opts::list()) -&gt; {ok, Ref::term()} | {error, Reason::term()}
+send(SvrRef::term(), Notification::list(), Opts::list()) -&gt; {ok, {<a href="#type-uuid">uuid()</a>, list()}} | {error, {<a href="#type-uuid">uuid()</a>, Reason::term()}}
 </code></pre>
 <br />
 

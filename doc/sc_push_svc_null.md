@@ -46,7 +46,7 @@ session_opt() = {mod, atom()} | {name, atom()} | {config, <a href="proplists.md#
 ## Function Index ##
 
 
-<table width="100%" border="1" cellspacing="0" cellpadding="2" summary="function index"><tr><td valign="top"><a href="#async_send-2">async_send/2</a></td><td>Asynchronously send notification to named session.</td></tr><tr><td valign="top"><a href="#async_send-3">async_send/3</a></td><td>Asynchronously send notification to named session with options Opts.</td></tr><tr><td valign="top"><a href="#get_session_pid-1">get_session_pid/1</a></td><td>Get pid of named session.</td></tr><tr><td valign="top"><a href="#init-1">init/1</a></td><td><code>Opts</code> is a list of proplists.</td></tr><tr><td valign="top"><a href="#send-2">send/2</a></td><td>Send notification to named session.</td></tr><tr><td valign="top"><a href="#send-3">send/3</a></td><td>Send notification to named session with options Opts.</td></tr><tr><td valign="top"><a href="#start-1">start/1</a></td><td></td></tr><tr><td valign="top"><a href="#start_link-1">start_link/1</a></td><td><code>Opts</code> is a list of proplists.</td></tr><tr><td valign="top"><a href="#start_session-1">start_session/1</a></td><td></td></tr><tr><td valign="top"><a href="#stop-1">stop/1</a></td><td></td></tr><tr><td valign="top"><a href="#stop_session-1">stop_session/1</a></td><td>Stop named session.</td></tr></table>
+<table width="100%" border="1" cellspacing="0" cellpadding="2" summary="function index"><tr><td valign="top"><a href="#async_send-2">async_send/2</a></td><td>Asynchronously send notification to named session.</td></tr><tr><td valign="top"><a href="#async_send-3">async_send/3</a></td><td>Asynchronously send notification to named session with options Opts.</td></tr><tr><td valign="top"><a href="#get_session_pid-1">get_session_pid/1</a></td><td>Get pid of named session.</td></tr><tr><td valign="top"><a href="#init-1">init/1</a></td><td><code>Opts</code> is a list of proplists.</td></tr><tr><td valign="top"><a href="#quiesce_session-1">quiesce_session/1</a></td><td>Quiesce named session.</td></tr><tr><td valign="top"><a href="#send-2">send/2</a></td><td>Send notification to named session.</td></tr><tr><td valign="top"><a href="#send-3">send/3</a></td><td>Send notification to named session with options Opts.</td></tr><tr><td valign="top"><a href="#start-1">start/1</a></td><td></td></tr><tr><td valign="top"><a href="#start_link-1">start_link/1</a></td><td><code>Opts</code> is a list of proplists.</td></tr><tr><td valign="top"><a href="#start_session-1">start_session/1</a></td><td></td></tr><tr><td valign="top"><a href="#stop-1">stop/1</a></td><td></td></tr><tr><td valign="top"><a href="#stop_session-1">stop_session/1</a></td><td>Stop named session.</td></tr></table>
 
 
 <a name="functions"></a>
@@ -99,6 +99,21 @@ init(Opts) -&gt; Result
 `Opts` is a list of proplists.
 Each proplist is a session definition containing
 name, mod, and config keys.
+
+<a name="quiesce_session-1"></a>
+
+### quiesce_session/1 ###
+
+<pre><code>
+quiesce_session(Name) -&gt; Result
+</code></pre>
+
+<ul class="definitions"><li><code>Name = atom()</code></li><li><code>Result = ok | {error, Reason}</code></li><li><code>Reason = term()</code></li></ul>
+
+Quiesce named session.
+This signals the session to prepare for shutdown by refusing to
+accept any more notifications, but still servicing in-flight
+requests.
 
 <a name="send-2"></a>
 

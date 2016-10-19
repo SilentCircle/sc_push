@@ -109,6 +109,8 @@ config_debug(Config) ->
     case pv(debug, Config, false) of
         false ->
             ok;
+        true ->
+            ok;
         [_|_] = DbgFilePath ->
             {trace, DbgFilePath}
     end.
@@ -178,9 +180,10 @@ enc_header_val(Val) ->
 pv(K, PL, Def) ->
     proplists:get_value(K, PL, Def).
 
--spec is_debug(wrq(), any()) -> boolean().
-is_debug(ReqData, _Ctx) ->
-    get_req_hdr("X-SCPush-Debug", ReqData, "false") =:= "true".
+-spec is_debug(wrq(), list()) -> boolean().
+is_debug(ReqData, Cfg) when is_list(Cfg) ->
+    get_req_hdr("X-SCPush-Debug", ReqData, "false") =:= "true" orelse
+    pv(debug, Cfg, false) =:= true.
 
 -spec get_req_hdr(string(), wrq()) -> string() | 'undefined'.
 get_req_hdr(HeaderName, ReqData) ->

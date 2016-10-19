@@ -149,18 +149,21 @@ process_post(ReqData, #ctx{method = 'POST',
                            app_id = AppId,
                            token = Token} = Ctx) ->
     ParseRes = sc_push_wm_common:parse_json(wrq:req_body(ReqData)),
-    Debug = sc_push_wm_helper:is_debug(ReqData, Ctx),
+    Debug = sc_push_wm_helper:is_debug(ReqData, Ctx#ctx.cfg),
     ?SC_DEBUG_LOG(Debug, "~p:parse_json returned:~n~p", [?MODULE, ParseRes]),
 
     case ParseRes of
         {ok, Props0} ->
-            Receivers = {receivers, [{svc_appid_tok, [{sc_util:to_atom(Svc),
-                                                       sc_util:to_bin(AppId),
-                                                       sc_util:to_bin(Token)}]}]},
+            Receivers = make_receivers([{Svc, AppId, Token}]),
             Props = sc_push_wm_common:store_prop(Receivers, Props0),
+            ?SC_DEBUG_LOG(Debug, "~p:Props:~n~p", [?MODULE, Props]),
             case sc_push_wm_common:send_push(Props) of
                 {ok, Results} ->
+                    ?SC_DEBUG_LOG(Debug, "~p:send_push returned:~n~p",
+                                  [?MODULE, Results]),
                     RD2 = sc_push_wm_common:add_result(ReqData, Results),
+                    ?SC_DEBUG_LOG(Debug, "~p:result data:~n~p",
+                                  [?MODULE, RD2]),
                     {true, RD2, Ctx#ctx{send_resp = Results}};
                 {error, Msg} -> % Bad request
                     sc_push_wm_common:bad_request(ReqData, Ctx, Msg)
@@ -175,3 +178,14 @@ process_post(ReqData, #ctx{method = 'POST',
 -compile({inline, [{make_true, 1}]}).
 make_true(_X) -> true.
 
+-compile({inline, [{make_receivers, 1}]}).
+make_receivers(SvcAppIdToks) when is_list(SvcAppIdToks) ->
+    {receivers,
+     [{svc_appid_tok,
+       [svc_appid_tok(Svc, AppId, Tok)
+        || {Svc, AppId, Tok} <- SvcAppIdToks]}
+     ]}.
+
+-compile({inline, [{svc_appid_tok, 3}]}).
+svc_appid_tok(Svc, AppId, Tok) ->
+    {sc_util:to_atom(Svc), sc_util:to_bin(AppId), sc_util:to_bin(Tok)}.

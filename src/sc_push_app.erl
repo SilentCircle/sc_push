@@ -25,6 +25,8 @@
     | {takeover, Node :: node()}
     | {failover, Node :: node()}.
 
+-include_lib("lager/include/lager.hrl").
+
 %% ===================================================================
 %% Application callbacks
 %% ===================================================================
@@ -36,11 +38,14 @@
 -spec start(StartType::start_type(), StartArgs::term()) ->
     {ok, pid(), list()} | {error, term()}.
 start(_StartType, _StartArgs) ->
+    lager:debug("Starting mnesia"),
     _ = mnesia:start(), % ... just in case
     _ = ensure_schema(),
     {ok, App} = application:get_application(?MODULE),
     Opts = application:get_all_env(App),
+    lager:info("Starting supervisor"),
     {ok, Pid} = sc_push_sup:start_link(Opts),
+    lager:info("Started sc_push_sup, pid ~p", [Pid]),
     {ok, Pid, [{sup_pid, Pid}, {env, Opts}]}.
 
 %%--------------------------------------------------------------------
@@ -55,6 +60,15 @@ start(_StartType, _StartArgs) ->
 %%--------------------------------------------------------------------
 -spec prep_stop(State::term()) -> NewState::term().
 prep_stop(State) ->
+    {ok, App} = application:get_application(?MODULE),
+    lager:info("Preparing to shut down application ~p", [App]),
+    %SupPid = sc_util:req_val(sup_pid, State),
+    Env = sc_util:req_val(env, State),
+    Services = sc_proplists:get_value(services, Env, []),
+    lager:info("Quiescing services ~p",
+               [sc_util:req_val(name, Svc) || Svc <- Services]),
+    _ = [sc_push:quiesce_service(Svc) || Svc <- Services],
+    lager:info("Services quiesced, shutting down application ~p", [App]),
     State.
 
 %%--------------------------------------------------------------------

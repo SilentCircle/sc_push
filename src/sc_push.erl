@@ -19,6 +19,53 @@
 %%% @doc
 %%% This module is the Erlang API for Silent Circle push notifications
 %%% and registrations.
+%%%
+%%% == Push Notification Format ==
+%%%
+%%% The notification format is very flexible. There is a simple format
+%%% and a more elaborate, canonical format.
+%%%
+%%% The simple format requires push tokens
+%%% to have been registered using the registration API, so that the
+%%% push tag can be used as a destination for thte notification.
+%%%
+%%% The canonical format requires a list of receivers to be provided for
+%%% each notification. This allows a notification to be sent to multiple
+%%% recipients on different services, specifying the destination in a
+%%% number of possible formats.
+%%%
+%%% === Simple notification format ===
+%%%
+%%% ```
+%%% [{alert, <<"Hello there.">>},
+%%%  {tag, <<"foo@example.com">>}]
+%%% '''
+%%%
+%%% === Canonical notification format ===
+%%%
+%%% The canonical format is as follows. Any or all of the receiver types may be specified,
+%%% but at least one, for example `svc_tok', **must** be provided.
+%%%
+%%% ```
+%%% [{alert, <<"Hello there.">>},
+%%%  {receivers, [{tag, [Tag]},
+%%%               {svc_tok, [{Service, Token}]},
+%%%               {svc_appid_tok, [{Service, AppId, Token}]},
+%%%               {device_id, [DeviceId]}]}]
+%%% '''
+%%%
+%%% More formally, the notification specification is defined in
+%%% {@link notification()}.
+%%%
+%%% === Example ===
+%%%
+%%% ```
+%%% AppId = <<"com.example.MyApp">>,
+%%% Tok = <<"4df5676af4307b3e0366da63e8854752d9219d8b9848f7c31bbab8741730fda6">>,
+%%% [{alert,<<"Hello">>},
+%%%  {aps,[{badge,22}]},
+%%%  {receivers,[{svc_appid_tok,[{apns, AppId, Tok}]}]}]
+%%% '''
 %%% @end
 %%%-------------------------------------------------------------------
 -module(sc_push).
@@ -32,11 +79,24 @@
 %%-----------------------------------------------------------------------
 %% Types
 %%-----------------------------------------------------------------------
+-type alert() :: binary().  % Alert message as binary string.
+-type tag() :: binary().    % Opaque group identifier.
+-type token() :: binary().  % APNS token as hex string, GCM registration id.
+-type service() :: atom().  % Service type, e.g. apns, gcm
+-type app_id() :: binary(). % AppId as binary string, e.g. `<<"com.foo.app">>'.
+-type dist() :: binary().   % Distribution, e.g. `<<"prod">>', `<<"dev">>'.
+
+-type std_proplist() :: sc_types:proplist(atom(), term()).
 -type reg_api_func_name() :: 'get_registration_info_by_device_id' |
                              'get_registration_info_by_svc_tok' |
                              'get_registration_info_by_tag'.
 
--type reg_info() :: std_proplist().
+-type reg_info_prop() :: {service, service()}
+                       | {token, token()}
+                       | {app_id, app_id()}
+                       | {dist, dist()}.
+
+-type reg_info() :: [reg_info_prop()].
 -type reg_info_list() :: [reg_info()].
 -type reg_ok() :: {ok, reg_info_list()}.
 -type reg_err_term() :: term().
@@ -46,10 +106,51 @@
 -type reg_results() :: [reg_result()].
 -type filtered_result() :: {reg_info_list(), reg_err_list()}.
 
--type receiver_t() :: tag | svc_tok | device_id.
--type receiver() :: {receiver_t(), list()}.
--type receivers() :: [receiver()].
+%%  -type receiver_t() :: tag | svc_tok | svc_appid_tok | device_id.
+%%  -type receiver() :: {receiver_t(), list()}.
+%%  -type receivers() :: [receiver()].
 -type receiver_regs() :: filtered_result().
+
+-type tags() :: [tag()].
+-type alert_spec() :: {'alert', alert()}.
+-type tag_spec() :: {'tag', tag()}.
+-type svc_tok() :: {service(), token()}.
+-type svc_toks() :: [svc_tok()].
+-type svc_appid_tok() :: {service(), app_id(), token()}.
+-type svc_appid_toks() :: [svc_appid_tok()].
+-type device_id() :: binary().
+-type device_ids() :: [device_id()].
+
+-type tag_spec_mult() :: {'tag', tags()}.
+-type svc_tok_spec() :: {'svc_tok', svc_toks()}.
+-type svc_appid_tok_spec() :: {'svc_appid_tok', svc_appid_toks()}.
+-type device_id_spec() :: {'device_id', device_ids()}.
+-type receiver_spec() :: tag_spec_mult()
+                       | svc_tok_spec()
+                       | svc_appid_tok_spec()
+                       | device_id_spec().
+
+-type receiver_specs() :: [receiver_spec()].
+-type receivers() :: {'receivers', receiver_specs()}.
+-type service_specific_spec() :: {service(), std_proplist()}.
+-type notification() :: [alert_spec() |
+                         tag_spec() |
+                         service_specific_spec() |
+                         receivers()].
+
+-type uuid() :: binary(). % A raw uuid in the form `<<_:128>>'.
+-type props() :: proplists:proplist().
+
+-type sync_send_result() :: {ok, {uuid(), props()}} | {error, term()}.
+-type sync_send_results() :: [sync_send_result()].
+
+-type async_status() :: submitted | queued.
+-type async_send_result() :: {ok, {async_status(), uuid()}} | {error, term()}.
+-type async_send_results() :: [async_send_result()].
+
+-type send_result() :: sync_send_result() | async_send_result().
+
+-type mode() :: sync | async.
 
 %%--------------------------------------------------------------------
 %% Defines
@@ -73,8 +174,11 @@
         start/0,
         start_service/1,
         stop_service/1,
+        quiesce_service/1,
+        quiesce_all_services/0,
         start_session/2,
         stop_session/2,
+        quiesce_session/2,
         get_session_pid/1,
         send/1,
         send/2,
@@ -90,8 +194,58 @@
         get_registration_info_by_id/1,
         get_registration_info_by_svc_tok/2,
         get_service_config/1,
+        get_all_service_configs/0,
         make_service_child_spec/1
     ]).
+
+-export_type([
+              alert/0,
+              alert_spec/0,
+              app_id/0,
+              async_send_result/0,
+              async_send_results/0,
+              async_status/0,
+              device_id/0,
+              device_id_spec/0,
+              device_ids/0,
+              dist/0,
+              filtered_result/0,
+              mode/0,
+              notification/0,
+              props/0,
+              receiver_regs/0,
+              receiver_spec/0,
+              receiver_specs/0,
+              receivers/0,
+              reg_api_func_name/0,
+              reg_err/0,
+              reg_err_list/0,
+              reg_err_term/0,
+              reg_info/0,
+              reg_info_list/0,
+              reg_info_prop/0,
+              reg_ok/0,
+              reg_result/0,
+              reg_results/0,
+              send_result/0,
+              service/0,
+              service_specific_spec/0,
+              std_proplist/0,
+              svc_appid_tok/0,
+              svc_appid_tok_spec/0,
+              svc_appid_toks/0,
+              svc_tok/0,
+              svc_tok_spec/0,
+              svc_toks/0,
+              sync_send_result/0,
+              sync_send_results/0,
+              tag/0,
+              tag_spec/0,
+              tag_spec_mult/0,
+              tags/0,
+              token/0,
+              uuid/0
+             ]).
 
 start() ->
     ensure_started(sasl),
@@ -164,8 +318,8 @@ start() ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec start_service(sc_types:proplist(atom(), term())) ->
-      {ok, pid()} | {error, term()}.
+-spec start_service(ServiceOpts) -> Result when
+      ServiceOpts :: std_proplist(), Result :: {ok, pid()} | {error, term()}.
 start_service(ServiceOpts) when is_list(ServiceOpts) ->
     Desc = sc_util:req_val(description, ServiceOpts),
     ChildSpec = make_service_child_spec(ServiceOpts),
@@ -174,7 +328,7 @@ start_service(ServiceOpts) when is_list(ServiceOpts) ->
         {ok, _} = Result ->
             ok = register_service(ServiceOpts),
             Result;
-        Err ->
+        {error, _} = Err ->
             Err
     end.
 
@@ -183,17 +337,50 @@ start_service(ServiceOpts) when is_list(ServiceOpts) ->
 %% @end
 %%--------------------------------------------------------------------
 -type child_id() :: term(). % Not a pid().
--spec stop_service(pid() | child_id()) ->
-      ok | {error, term()}.
+-spec stop_service(Id) -> Result when
+      Id :: pid() | child_id(), Result :: ok | {error, term()}.
 stop_service(Id) ->
     Res = case supervisor:terminate_child(sc_push_sup, Id) of
-        ok ->
-            supervisor:delete_child(sc_push_sup, Id);
-        Err ->
-            Err
-    end,
+              ok ->
+                  supervisor:delete_child(sc_push_sup, Id);
+              {error, _} = Err ->
+                  Err
+          end,
     unregister_service(Id),
     Res.
+
+%%--------------------------------------------------------------------
+%% @doc Quiesce a service. This instructs the service not to accept any more
+%% service requests to allow pending requests to drain.  This call does not
+%% return until all pending service requests have completed.
+%% @end
+%%--------------------------------------------------------------------
+-spec quiesce_service(Service) -> Result when
+      Service :: atom() | pid(), Result :: ok | {error, term()}.
+quiesce_service(Service) when is_atom(Service) ->
+    case get_service_config(Service) of
+        {ok, SvcConfig} ->
+            ApiMod = sc_util:req_val(mod, SvcConfig),
+            Name = sc_util:req_val(name, SvcConfig),
+            ApiMod:quiesce_session(Name);
+        Error ->
+            Error
+    end.
+
+%%--------------------------------------------------------------------
+%% @doc Quiesce all services.
+%% @see quiesce_service/1
+%% @end
+%%--------------------------------------------------------------------
+-spec quiesce_all_services() -> ok.
+quiesce_all_services() ->
+    Cfgs = get_all_service_configs(),
+    _ = [begin
+            Name = sc_util:req_val(name, Cfg),
+            Mod = sc_util:req_val(mod, Cfg),
+            ok = Mod:quiesce_session(Name)
+         end || Cfg <- Cfgs],
+    ok.
 
 %%--------------------------------------------------------------------
 %% @doc Make a supervisor child spec for a service. The name of the
@@ -202,8 +389,8 @@ stop_service(Id) ->
 %% @see start_service/1
 %% @end
 %%--------------------------------------------------------------------
--spec make_service_child_spec(sc_types:proplist(atom(), term())) ->
-      supervisor:child_spec().
+-spec make_service_child_spec(Opts) -> Result when
+      Opts :: std_proplist(), Result :: supervisor:child_spec().
 make_service_child_spec(Opts) when is_list(Opts) ->
     Name = sc_util:req_val(name, Opts),
     SupMod = sc_util:req_val(mod, Opts),
@@ -217,7 +404,8 @@ make_service_child_spec(Opts) when is_list(Opts) ->
 %% @see start_service/1
 %% @end
 %%--------------------------------------------------------------------
--spec register_service(sc_types:proplist(atom(), term())) -> ok.
+-spec register_service(Svc) -> ok when
+      Svc :: std_proplist().
 register_service(Svc) when is_list(Svc) ->
     sc_push_lib:register_service(Svc).
 
@@ -226,7 +414,8 @@ register_service(Svc) when is_list(Svc) ->
 %% @see start_service/1
 %% @end
 %%--------------------------------------------------------------------
--spec unregister_service(ServiceName::atom()) -> ok.
+-spec unregister_service(Name) -> ok when
+      Name :: atom().
 unregister_service(Name) when is_atom(Name) ->
     sc_push_lib:unregister_service(Name).
 
@@ -235,11 +424,19 @@ unregister_service(Name) when is_atom(Name) ->
 %% @see start_service/1
 %% @end
 %%--------------------------------------------------------------------
--type std_proplist() :: sc_types:proplist(atom(), term()).
--spec get_service_config(Service::term()) ->
-    {ok, std_proplist()} | {error, term()}.
+-spec get_service_config(Service) -> Result when
+      Service :: term(), Result :: {ok, std_proplist()} | {error, term()}.
 get_service_config(Service) ->
     sc_push_lib:get_service_config(Service).
+
+%%--------------------------------------------------------------------
+%% @doc Get all service configurations
+%% @end
+%%--------------------------------------------------------------------
+-spec get_all_service_configs() -> SvcConfigs when
+      SvcConfigs :: [std_proplist()].
+get_all_service_configs() ->
+    sc_push_lib:get_all_service_configs().
 
 %%--------------------------------------------------------------------
 %% @doc Start named session as described in the options proplist `Opts'.
@@ -317,8 +514,9 @@ get_service_config(Service) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec start_session(Service::atom(), Opts::list()) ->
-    {ok, pid()} | {error, already_started} | {error, Reason::term()}.
+-spec start_session(Service, Opts) -> Result when
+      Service :: atom(), Opts :: std_proplist(),
+      Result :: {ok, Pid} | {error, Reason}, Pid :: pid(), Reason :: term().
 start_session(Service, Opts) when is_atom(Service), is_list(Opts) ->
     case get_service_config(Service) of
         {ok, SvcConfig} ->
@@ -326,8 +524,8 @@ start_session(Service, Opts) when is_atom(Service), is_list(Opts) ->
             SessionName = sc_util:req_val(name, Opts),
             Timeout = sc_util:val(start_timeout, Opts, 5000),
             ChildSpec = sc_util:make_child_spec(Opts, Timeout),
-            ApiMod:start_child(SessionName, ChildSpec);
-        Error ->
+            ApiMod:start_session(SessionName, ChildSpec);
+        {error, _} = Error ->
             Error
     end.
 
@@ -335,13 +533,33 @@ start_session(Service, Opts) when is_atom(Service), is_list(Opts) ->
 %% @doc Stop named session.
 %% @end
 %%--------------------------------------------------------------------
--spec stop_session(atom(), atom()) -> ok | {error, Reason::term()}.
+-spec stop_session(Service, Name) -> Result when
+      Service :: atom(), Name :: atom(),
+      Result :: ok | {error, Reason}, Reason :: term().
 stop_session(Service, Name) when is_atom(Service), is_atom(Name) ->
     case get_service_config(Service) of
         {ok, SvcConfig} ->
             ApiMod = sc_util:req_val(mod, SvcConfig),
-            ApiMod:stop_child(Name);
-        Error ->
+            ApiMod:stop_session(Name);
+        {error, _} = Error ->
+            Error
+    end.
+
+%%--------------------------------------------------------------------
+%% @doc Quiesce session. This puts the session in a state that rejects new
+%% push requests, but continues to service in-flight requests.  Once there are
+%% no longer any in-flight requests, the session is stopped.
+%% @end
+%%--------------------------------------------------------------------
+-spec quiesce_session(Service, Name) -> Result when
+      Service :: atom(), Name :: atom(),
+      Result :: ok | {error, Reason}, Reason :: term().
+quiesce_session(Service, Name) when is_atom(Service), is_atom(Name) ->
+    case get_service_config(Service) of
+        {ok, SvcConfig} ->
+            ApiMod = sc_util:req_val(mod, SvcConfig),
+            ApiMod:quiesce_session(Name);
+        {error, _} = Error ->
             Error
     end.
 
@@ -349,7 +567,8 @@ stop_session(Service, Name) when is_atom(Service), is_atom(Name) ->
 %% @doc Get pid of named session.
 %% @end
 %%--------------------------------------------------------------------
--spec get_session_pid(Name::atom()) -> pid() | undefined.
+-spec get_session_pid(Name) -> Result when
+      Name :: atom(), Result :: pid() | undefined.
 get_session_pid(Name) when is_atom(Name) ->
     erlang:whereis(Name).
 
@@ -363,8 +582,13 @@ get_session_pid(Name) when is_atom(Name) ->
 %% in question.
 %%
 %% ==== Example ====
+%%
+%% Providing a UUID as shown is not required, but is recommended for tracking
+%% purposes.
+%%
 %% ```
 %% Notification = [
+%%     {uuid, <<"4091b3a2-df6a-443e-a119-8f1d430ed53c">>},
 %%     {alert, <<"Notification to be sent">>},
 %%     {tag, <<"user@domain.com">>},
 %%     % ... other generic options ...
@@ -373,28 +597,43 @@ get_session_pid(Name) when is_atom(Name) ->
 %%     {etc, [FutureOpts]} % Obviously etc is not a real service.
 %% ].
 %% '''
+%% @see sync_send_results()
 %% @end
 %%--------------------------------------------------------------------
--spec send(sc_types:proplist(atom(), term())) ->
-    list({ok, Ref::term()} | {error, Reason::term()}).
+-spec send(Notification) -> Result when
+      Notification :: notification(), Result :: sync_send_results().
 send(Notification) when is_list(Notification) ->
     send_notification(sync, Notification, []).
 
+-spec send(Notification, Opts) -> Result when
+      Notification :: notification(), Opts :: std_proplist(),
+      Result :: sync_send_results().
 send(Notification, Opts) ->
     send_notification(sync, Notification, Opts).
 
 %%--------------------------------------------------------------------
-%% @doc Asynchronously sends a notification specified by proplist `Notification'.
-%% The contents of the proplist differ depending on the push service used.
-%% Do the same as {@link send/1} and {@link send/2} appart from returning
-%% only 'ok' or {'error', Reason} for each registered services.
+%% @doc Asynchronously sends a notification specified by proplist
+%% `Notification'.  The contents of the proplist differ depending on the push
+%% service used (see {@link notification()}).
+%%
+%% The asynchronous response is sent to the calling pid's mailbox as a tuple.
+%% The tuple is defined as  `async_message()' as shown below.
+%%
+%% ```
+%% -type svc_response_id() :: apns_response | gcm_response | atom().
+%% -type version() :: atom(). % For example, `` 'v1' ''.
+%% -type async_message() :: {svc_response_id(), version(), gen_send_result()}.
+%% '''
 %% @end
 %%--------------------------------------------------------------------
--spec async_send(sc_types:proplist(atom(), term())) ->
-    list(ok | {error, Reason::term()}).
+-spec async_send(Notification) -> Result when
+      Notification :: notification(), Result :: async_send_results().
 async_send(Notification) when is_list(Notification) ->
     send_notification(async, Notification, []).
 
+-spec async_send(Notification, Opts) -> Result when
+      Notification :: notification(), Opts :: std_proplist(),
+      Result ::  async_send_results().
 async_send(Notification, Opts) ->
     send_notification(async, Notification, Opts).
 
@@ -516,43 +755,66 @@ get_registration_info_by_id(ID) ->
 %%--------------------------------------------------------------------
 %% Internal functions
 %%--------------------------------------------------------------------
+%% @private
+-spec send_notification(Mode, Notification, Opts) -> Result when
+      Mode :: mode(), Notification :: notification(),
+      Opts :: std_proplist(), Result :: [send_result()].
 send_notification(Mode, Notification, Opts) ->
     {RegOKs, RegErrs} = lookup_reg_info(Notification),
     lager:debug("[~p:~B] RegOKs=~p, RegErrs=~p",
                 [send_notification, ?LINE, RegOKs, RegErrs]),
     CleanN = remove_props([service, token], Notification),
-    Sends = [send_registered_one(Mode, CleanN, Reg, Opts)
-             || Reg <- RegOKs],
+    Sends = [send_registered_one(Mode, CleanN, Reg, Opts) || Reg <- RegOKs],
     Sends ++ case RegErrs of
-        [] ->
-            [];
-        _ ->
-            [{error, RegErrs}]
-    end.
+                 [] ->
+                     [];
+                 _ ->
+                     [{error, RegErrs}]
+             end.
 
+%%--------------------------------------------------------------------
+%% @private
+-spec send_registered_one(Mode, Notification, RegInfo, Opts) -> Result when
+      Mode :: mode(), Notification :: notification(), RegInfo :: reg_info(),
+      Opts :: std_proplist(), Result :: send_result().
 send_registered_one(Mode, Notification, RegInfo, Opts) ->
     Service = sc_util:req_val(service, RegInfo),
     Token = sc_util:req_val(token, RegInfo),
     AppId = sc_util:req_val(app_id, RegInfo),
     Dist = sc_util:opt_val(dist, RegInfo, <<"">>),
-    send_one(Mode, [{token, Token} | Notification], Service, AppId, Dist, Opts).
+    Nf = lists:keystore(token, 1, Notification, {token, Token}),
+    send_one(Mode, Nf, Service, AppId, Dist, Opts).
 
+%%--------------------------------------------------------------------
+%% @private
+-spec send_one(Mode, Notification, Service, AppId, Dist, Opts) -> Result when
+      Mode :: mode(), Notification :: std_proplist(), Service :: service(),
+      AppId :: app_id(), Dist :: dist(), Opts :: std_proplist(),
+      Result :: send_result().
 send_one(Mode, Notification, Service, AppId, Dist, Opts) ->
     case get_service_config(Service) of
         {ok, SvcConfig} ->
             ApiMod = sc_util:req_val(mod, SvcConfig),
             Name = get_service_name(Service, AppId, Dist),
             api_send(Mode, ApiMod, Name, Notification, Opts);
-        Error ->
+        {error, _} = Error ->
             Error
     end.
 
+%%--------------------------------------------------------------------
+%% @private
+-spec api_send(Mode, ApiMod, Name, Notification, Opts) -> Result when
+      Mode :: mode(), ApiMod :: module(), Name :: atom(),
+      Notification :: std_proplist(), Opts :: std_proplist(),
+      Result :: send_result().
 api_send(sync, ApiMod, Name, Notification, Opts) ->
     ApiMod:send(Name, Notification, Opts);
 api_send(async, ApiMod, Name, Notification, Opts) ->
     ApiMod:async_send(Name, Notification, Opts).
 
+%%--------------------------------------------------------------------
 -compile({inline, [{get_service_name, 3}]}).
+%% @private
 get_service_name(Service, AppId, <<"">>) ->
     iolist_to_latin1_atom([sc_util:to_bin(Service), $-, sc_util:to_bin(AppId)]);
 get_service_name(Service, AppId, <<"prod">>) ->
@@ -562,10 +824,14 @@ get_service_name(Service, AppId, Dist) ->
     iolist_to_latin1_atom([sc_util:to_bin(Service), $-, sc_util:to_bin(AppId),
                           $-, $-, UDist]).
 
+%%--------------------------------------------------------------------
 -compile({inline, [{iolist_to_latin1_atom, 1}]}).
+%% @private
 iolist_to_latin1_atom(IOList) ->
     binary_to_atom(list_to_binary(IOList), latin1).
 
+%%--------------------------------------------------------------------
+%% @private
 ensure_started(App) ->
     case application:start(App) of
         ok ->
@@ -574,9 +840,12 @@ ensure_started(App) ->
             ok
     end.
 
+%%--------------------------------------------------------------------
+%% @private
 remove_props(Unwanted, PL) ->
     [KV || {K, _} = KV <- PL, not lists:member(K, Unwanted)].
 
+%%--------------------------------------------------------------------
 %% Rec ID  Svc  Token Dist Tag
 %%  1   1  apns aaaa  prod alice@domain
 %%  2   2  apns aaaa  prod bob@domain
@@ -588,6 +857,7 @@ remove_props(Unwanted, PL) ->
 
 %% Note: a receiver with service, app_id and token does not
 %% require a registration lookup.
+%% @private
 lookup_reg_info(Notification) ->
     Receivers = case sc_util:val(receivers, Notification) of
         undefined ->
@@ -597,6 +867,8 @@ lookup_reg_info(Notification) ->
     end,
     get_receiver_regs(Receivers).
 
+%%--------------------------------------------------------------------
+%% @private
 default_receivers(Notification) ->
     case sc_util:val(tag, Notification) of
         undefined ->
@@ -605,29 +877,32 @@ default_receivers(Notification) ->
             [{tag, [Tag]}]
     end.
 
+%%--------------------------------------------------------------------
 %% Notification v2
 %% [
 %%     {alert, <<"">>},
 %%     {receivers, [
 %%             {tag, [Tag1, Tag2]},
-%%             {svc_tok, [{apns, [Tok1, Tok2]}]},
-%%             {svc_appid_tok, [{apns, <<"com.silentcircle.enterprisephone.voip">>,[Tok1, Tok2]}]},
+%%             {svc_tok, [{apns, Tok1},{gcm, Tok2}]},
+%%             {svc_appid_tok, [{apns, AppId1, Tok1},{gcm,AppId2,Tok2}]},
 %%             {device_id, [ID1, ID2]}
 %%         ]
 %%     }
 %% ].
 %%
 %%--------------------------------------------------------------------
+%% @private
 -spec get_receiver_regs(Receivers) -> ReceiverRegs when
-      Receivers :: receivers(), ReceiverRegs :: receiver_regs().
+      Receivers :: receiver_specs(), ReceiverRegs :: receiver_regs().
 get_receiver_regs(Receivers) ->
     filter_regs(lists:foldr(fun(Receiver, Acc) ->
                                 get_receiver_reg(Receiver) ++ Acc
                             end, [], Receivers)).
 
 %%--------------------------------------------------------------------
+%% @private
 -spec get_receiver_reg(Receiver) -> RegResults when
-      Receiver :: receiver(), RegResults :: reg_results().
+      Receiver :: receiver_spec(), RegResults :: reg_results().
 get_receiver_reg({tag, Tags}) ->
     get_tags(Tags);
 get_receiver_reg({svc_tok, SvcToks}) ->
@@ -640,6 +915,7 @@ get_receiver_reg(Invalid) ->
     [{error, {invalid_receiver, Invalid}}].
 
 %%--------------------------------------------------------------------
+%% @private
 -spec get_tags(Tags) -> RegResults when
       Tags :: [Tag], RegResults :: reg_results(), Tag :: binary().
 get_tags(Tags) ->
@@ -648,6 +924,7 @@ get_tags(Tags) ->
              reg_not_found_for_tag) || Tag <- Tags].
 
 %%--------------------------------------------------------------------
+%% @private
 -spec get_svc_toks(SvcToks) -> RegResults when
     SvcToks :: [{Svc, Tok}], RegResults :: reg_results(),
     Svc :: atom(), Tok :: binary().
@@ -659,6 +936,7 @@ get_svc_toks(SvcToks) ->
 %%--------------------------------------------------------------------
 %% Fake getting a registration since we have all the required reg info already
 %% (service, app_id, token).
+%% @private
 -spec get_svc_appid_toks([{Service, AppID, Token}]) -> Result
     when Service :: atom(), AppID :: binary(), Token :: binary(),
          Result :: reg_results().
@@ -666,6 +944,7 @@ get_svc_appid_toks(SvcAppIDToks) ->
     [make_reg_resp(Svc, AppID, Token) || {Svc, AppID, Token} <- SvcAppIDToks].
 
 %%--------------------------------------------------------------------
+%% @private
 -spec get_device_ids(IDs) -> RegResults when
       IDs :: [binary()], RegResults :: reg_results().
 get_device_ids(IDs) ->
@@ -674,6 +953,7 @@ get_device_ids(IDs) ->
              reg_not_found_for_device_id) || ID <- IDs].
 
 %%--------------------------------------------------------------------
+%% @private
 -spec get_reg(FuncName, RegQuery, ErrType) -> RegResult when
       FuncName :: reg_api_func_name(), RegQuery :: term(), ErrType :: atom(),
       RegResult :: reg_result().
@@ -686,6 +966,7 @@ get_reg(FuncName, RegQuery, ErrType) ->
     end.
 
 %%--------------------------------------------------------------------
+%% @private
 -spec make_reg_resp(Svc, AppID, Token) -> RegResp when
       Svc :: atom(), AppID :: binary(), Token :: binary(),
       RegResp :: reg_ok().
@@ -695,6 +976,8 @@ make_reg_resp(Svc, AppID, Token) ->
           {token, Token}],
     {ok, [PL]}. %% Requires list of proplists
 
+%%--------------------------------------------------------------------
+%% @private
 -spec filter_regs(RegResults) -> FilteredResult when
       RegResults :: reg_results(), FilteredResult :: filtered_result().
 filter_regs(RegResults) ->
@@ -705,8 +988,10 @@ filter_regs(RegResults) ->
     FiltErrs = lists:usort([Err || {error, Err} <- Errs]),
     {FiltOKs, FiltErrs}.
 
+%%--------------------------------------------------------------------
 -compile({inline, [{flatten_results, 1}]}).
 %% @doc Convert [{ok | error, term()}] to [term()]
+%% @private
 -spec flatten_results(Results) -> FlattenedResults when
       Results :: [{atom(), list()}],
       FlattenedResults :: list().
@@ -714,10 +999,12 @@ flatten_results(Results) ->
     lists:append([L || {_, L} <- Results]).
 
 -compile({inline, [{compare_tokens, 2}]}).
+%% @private
 compare_tokens(PL1, PL2) ->
     get_svc_tok(PL1) =< get_svc_tok(PL2).
 
 -compile({inline, [{get_svc_tok, 1}]}).
+%% @private
 get_svc_tok(PL) ->
     {sc_util:req_val(service, PL), sc_util:req_val(token, PL)}.
 

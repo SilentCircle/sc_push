@@ -84,11 +84,11 @@ init(Opts) ->
     {ok, {SupFlags, Children}}.
 
 service_child_specs(Opts) ->
-    Services = proplists:get_value(services, Opts, []),
+    Services = sc_util:val(services, Opts, []),
     [sc_push:make_service_child_spec(Svc) || Svc <- Services].
 
 register_services(Opts) ->
-    Services = proplists:get_value(services, Opts, []),
+    Services = sc_util:val(services, Opts, []),
     [sc_push:register_service(Svc) || Svc <- Services].
 
 check_mnesia_running() ->

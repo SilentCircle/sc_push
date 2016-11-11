@@ -46,10 +46,10 @@ but at least one, for example `svc_tok`, **must** be provided.
 
 ```
    [{alert, <<"Hello there.">>},
-    {receivers, [{tag, Tags},
-                 {svc_tok, [{Service, Tokens}]},
-                 {svc_appid_tok, [{Service, AppId, Tokens}]},
-                 {device_id, DeviceIds}]}]
+    {receivers, [{tag, [Tag]},
+                 {svc_tok, [{Service, Token}]},
+                 {svc_appid_tok, [{Service, AppId, Token}]},
+                 {device_id, [DeviceId]}]}]
 ```
 
 More formally, the notification specification is defined in
@@ -390,7 +390,7 @@ The contents of the proplist differ depending on the push service used.
 The result will be a list of `{ok, term()}` or `{error, term()}`.
 
 For apnsv3, `term()` is either `{queued, uuid()}` or `{submitted, uuid()}`.
-The asyncronous response is sent to the calling pid's mailbox as a tuple
+The asynchronous response is sent to the calling pid's mailbox as a tuple
 `{service_response(), version(), data()}`, where `service_response()` is an
 atom `'<service>_response'`, e.g.`'apns_response'`, `version()` is
 a service-specific atom (e.g. `v3`), and `data()` is a proplist of

@@ -86,7 +86,7 @@ allowed_methods(ReqData, Ctx) ->
 -spec resource_exists(sc_push_wm_helper:wrq(), ctx()) ->
     {Exists::boolean(), sc_push_wm_helper:wrq(), ctx()}.
 resource_exists(ReqData, #ctx{tag = Tag} = Ctx) ->
-    Debug = sc_push_wm_helper:is_debug(ReqData, Ctx),
+    Debug = sc_push_wm_helper:is_debug(ReqData, Ctx#ctx.cfg),
     ?SC_DEBUG_LOG(Debug, "~p:resource_exists called", [?MODULE]),
     BTag = sc_util:to_bin(Tag),
     case sc_push_reg_api:get_registration_info_by_tag(BTag) of
@@ -151,7 +151,7 @@ finish_request(ReqData, Ctx) ->
 %% '''
 -spec delete_resource(sc_push_wm_helper:wrq(), ctx()) -> sc_push_wm_helper:wbool_ret().
 delete_resource(ReqData, Ctx) ->
-    Debug = sc_push_wm_helper:is_debug(ReqData, Ctx),
+    Debug = sc_push_wm_helper:is_debug(ReqData, Ctx#ctx.cfg),
     ?SC_DEBUG_LOG(Debug, "~p:delete_resource called", [?MODULE]),
     BTag = sc_util:to_bin(Ctx#ctx.tag),
     case sc_push_reg_api:deregister_tag(BTag) of
@@ -172,14 +172,14 @@ delete_resource(ReqData, Ctx) ->
 %% '''
 -spec delete_completed(sc_push_wm_helper:wrq(), ctx()) -> sc_push_wm_helper:wbool_ret().
 delete_completed(ReqData, Ctx) ->
-    Debug = sc_push_wm_helper:is_debug(ReqData, Ctx),
+    Debug = sc_push_wm_helper:is_debug(ReqData, Ctx#ctx.cfg),
     ?SC_DEBUG_LOG(Debug, "~p:delete_completed called", [?MODULE]),
     {true, ReqData, Ctx}. % Deletes are immediate
 
 %% @doc Get registration data as JSON. The Body should be either an iolist() or {stream,streambody()}
 -spec to_json(sc_push_wm_helper:wrq(), ctx()) -> {[sc_push_wm_helper:json()], sc_push_wm_helper:wrq(), ctx()}.
 to_json(ReqData, #ctx{rsp = Info} = Ctx) ->
-    Debug = sc_push_wm_helper:is_debug(ReqData, Ctx),
+    Debug = sc_push_wm_helper:is_debug(ReqData, Ctx#ctx.cfg),
     ?SC_DEBUG_LOG(Debug, "~p:to_json called", [?MODULE]),
     Result = sc_push_wm_helper:check_reg_lookup(Info),
     {Result, ReqData, Ctx}.

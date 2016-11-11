@@ -194,7 +194,7 @@ finish_request(ReqData, Ctx) ->
 %% '''
 -spec delete_resource(sc_push_wm_helper:wrq(), ctx()) -> sc_push_wm_helper:wbool_ret().
 delete_resource(ReqData, Ctx) ->
-    Debug = sc_push_wm_helper:is_debug(ReqData, Ctx),
+    Debug = sc_push_wm_helper:is_debug(ReqData, Ctx#ctx.cfg),
     ?SC_DEBUG_LOG(Debug, "~p:delete_resource called", [?MODULE]),
     case sc_push_reg_api:deregister_id(Ctx#ctx.svc_id) of
         ok ->
@@ -214,14 +214,14 @@ delete_resource(ReqData, Ctx) ->
 %% '''
 -spec delete_completed(sc_push_wm_helper:wrq(), ctx()) -> sc_push_wm_helper:wbool_ret().
 delete_completed(ReqData, Ctx) ->
-    Debug = sc_push_wm_helper:is_debug(ReqData, Ctx),
+    Debug = sc_push_wm_helper:is_debug(ReqData, Ctx#ctx.cfg),
     ?SC_DEBUG_LOG(Debug, "~p:delete_completed called", [?MODULE]),
     {true, ReqData, Ctx}. % Deletes are immediate
 
 %% @doc Get registration data as JSON. The Body should be either an iolist() or {stream,streambody()}
 -spec to_json(sc_push_wm_helper:wrq(), ctx()) -> {[sc_push_wm_helper:json()], sc_push_wm_helper:wrq(), ctx()}.
-to_json(ReqData, Ctx) ->
-    Debug = sc_push_wm_helper:is_debug(ReqData, #ctx{svc_id = SvcId, tag = Tag} = Ctx),
+to_json(ReqData, #ctx{svc_id = SvcId, tag = Tag, cfg = Cfg} = Ctx) ->
+    Debug = sc_push_wm_helper:is_debug(ReqData, Cfg),
     ?SC_DEBUG_LOG(Debug, "~p:to_json called", [?MODULE]),
     Result = if
         SvcId =:= undefined andalso Tag =:= undefined ->

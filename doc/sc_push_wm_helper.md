@@ -335,7 +335,7 @@ get_svc_id(ReqData::<a href="#type-wrq">wrq()</a>) -&gt; {ok, any()} | undefined
 ### is_debug/2 ###
 
 <pre><code>
-is_debug(ReqData::<a href="#type-wrq">wrq()</a>, Ctx::any()) -&gt; boolean()
+is_debug(ReqData::<a href="#type-wrq">wrq()</a>, Cfg::list()) -&gt; boolean()
 </code></pre>
 <br />
 

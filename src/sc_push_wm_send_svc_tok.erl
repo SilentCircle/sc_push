@@ -146,7 +146,7 @@ process_post(ReqData, #ctx{method = 'POST',
                            service = Svc,
                            token = Token} = Ctx) ->
     ParseRes = sc_push_wm_common:parse_json(wrq:req_body(ReqData)),
-    Debug = sc_push_wm_helper:is_debug(ReqData, Ctx),
+    Debug = sc_push_wm_helper:is_debug(ReqData, Ctx#ctx.cfg),
     ?SC_DEBUG_LOG(Debug, "~p:parse_json returned:~n~p", [?MODULE, ParseRes]),
 
     case ParseRes of

@@ -62,6 +62,7 @@
 -define(DEFAULT_LOG_FILE_NAME, "/tmp/" ++ atom_to_list(?MODULE) ++ ".log").
 -define(LOG(S, Level, Fmt, Msg), ((S#state.log_fun)(S#state.log_h, Level, Fmt, Msg))).
 
+-type uuid() :: binary().
 -type terminate_reason() :: normal |
                             shutdown |
                             {shutdown, term()} |
@@ -118,7 +119,7 @@ stop(SvrRef) ->
 %%--------------------------------------------------------------------
 %% @equiv async_send(SvrRef, Notification, [])
 -spec async_send(SvrRef::term(), Notification::list()) ->
-       ok | {error, Reason::term()}.
+    {ok, {submitted, uuid()}} | {error, {uuid(), term()}}.
 async_send(SvrRef, Notification) when is_list(Notification) ->
     async_send(SvrRef, Notification, []).
 
@@ -132,15 +133,15 @@ async_send(SvrRef, Notification) when is_list(Notification) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec async_send(term(), list(), list()) ->
-       ok | {error, Reason::term()}.
+    {ok, {submitted, uuid()}} | {error, {uuid(), term()}}.
 async_send(SvrRef, Notification, Opts) when is_list(Notification),
                                             is_list(Opts) ->
-    gen_server:cast(SvrRef, {async_send, Notification, Opts}).
+    gen_server:call(SvrRef, {async_send, Notification, Opts}).
 
 %%--------------------------------------------------------------------
 %% @equiv send(SvrRef, Notification, [])
 -spec send(SvrRef::term(), Notification::list()) ->
-       {ok, Ref::term()} | {error, Reason::term()}.
+       {ok, {uuid(), list()}} | {error, {uuid(), {Reason::term()}}}.
 send(SvrRef, Notification) when is_list(Notification) ->
     send(SvrRef, Notification, []).
 
@@ -163,13 +164,13 @@ send(SvrRef, Notification) when is_list(Notification) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec send(term(), list(), list()) ->
-       {ok, Ref::term()} | {error, Reason::term()}.
+       {ok, {uuid(), list()}} | {error, {uuid(), Reason::term()}}.
 send(SvrRef, Notification, Opts) when is_list(Notification), is_list(Opts) ->
     gen_server:call(SvrRef, {send, Notification, Opts}).
 
-%% @doc Schedule a callback if requested
-schedule_cb(SvrRef, Opts, Ref, Status) when is_list(Opts) ->
-    gen_server:cast(SvrRef, {do_callback, {Opts, Ref, Status}}).
+%% @doc Schedule a callback
+schedule_cb(SvrRef, ReplyPid, Data) ->
+    gen_server:cast(SvrRef, {do_callback, {ReplyPid, Data}}).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -225,18 +226,38 @@ init([Name, Opts]) ->
 
 handle_call({send, Notification, Opts}, _From, #state{seq_no = Seq} = State) ->
     _ = lager:debug("send, Notification=~p, Opts=~p", [Notification, Opts]),
-    Self = self(),
+    UUID = make_uuid(Notification),
     Resp = case sc_util:val(return, Notification, success) of
         success ->
             NewSeq = Seq + 1,
-            Reply = {ok, NewSeq},
-            schedule_cb(Self, Opts, NewSeq, ok),
+            Reply = {ok, {UUID, make_props(UUID)}},
             {reply, Reply, State#state{seq_no = NewSeq}};
         Error ->
-            schedule_cb(Self, Opts, undefined, Error),
-            {reply, Error, State}
+            {reply, {error, {UUID, Error}}, State}
     end,
     _ = lager:info("send, response = ~p", [Resp]),
+    Resp;
+handle_call({async_send, Notification, Opts}, {From, _Ref},
+            #state{seq_no = Seq} = State) ->
+    _ = lager:debug("async_send, Notification=~p, Opts=~p",
+                    [Notification, Opts]),
+    Self = self(),
+    UUID = make_uuid(Notification),
+    Resp = case sc_util:val(return, Notification, success) of
+        success ->
+            NewSeq = Seq + 1,
+            _ = lager:info("async_send success, new seq: ~B", [NewSeq]),
+            Reply = {ok, {submitted, UUID}},
+            CallbackData = {UUID, {ok, make_props(UUID)}},
+            schedule_cb(Self, From, CallbackData),
+            {reply, Reply, State#state{seq_no = NewSeq}};
+        Error ->
+            _ = lager:info("async_send error: ~p", [Error]),
+            CallbackData = {UUID, {error, Error}},
+            schedule_cb(Self, From, CallbackData),
+            {reply, Error, State}
+    end,
+    _ = lager:info("async_send, response = ~p", [Resp]),
     Resp;
 
 handle_call(get_state, _From, State) ->
@@ -265,38 +286,13 @@ handle_call(Request, _From, State) ->
     {stop, Reason::term(), NewState::term()}
     .
 
-handle_cast({async_send, Notification, Opts},
-            #state{seq_no = Seq} = State0) ->
-    _ = lager:debug("async_send, Notification=~p, Opts=~p",
-                    [Notification, Opts]),
-    Self = self(),
-    State = case sc_util:val(return, Notification, success) of
-        success ->
-            NewSeq = Seq + 1,
-            _ = lager:info("async_send success, new seq: ~B", [NewSeq]),
-            schedule_cb(Self, Opts, NewSeq, ok),
-            State0#state{seq_no = NewSeq};
-        Error ->
-            _ = lager:info("async_send error: ~p", [Error]),
-            schedule_cb(Self, Opts, undefined, Error),
-            State0
+handle_cast({do_callback, {Pid, Data}}, State) ->
+    case Pid of
+        {_ReplyTo, _Ref} ->
+            ok = gen_server:reply(Pid, Data);
+        _ when is_pid(Pid) ->
+            Pid ! {null, v1, Data}
     end,
-    {noreply, State};
-
-handle_cast({do_callback, {Opts, Ref, Status}}, State) when is_list(Opts) ->
-    ok = case proplists:get_value(callback, Opts) of
-             {Pid, WhenToCallback} when is_pid(Pid),
-                                        is_list(WhenToCallback) ->
-                 case lists:member(completion, WhenToCallback) of
-                     true ->
-                         Pid ! {null, completion, Ref, Status},
-                         ok;
-                     false ->
-                         ok
-                 end;
-             undefined -> % do nothing
-                 ok
-         end,
     {noreply, State};
 
 handle_cast(stop, State) ->
@@ -360,3 +356,26 @@ validate_args(Name, _Opts) ->
     #state{
         name = Name
     }.
+
+uuid_to_str(UUID) ->
+    uuid:uuid_to_string(UUID, binary_standard).
+
+str_to_uuid(UUID) ->
+    uuid:string_to_uuid(UUID).
+
+make_uuid(Notification) ->
+    case lists:keysearch(uuid, 1, Notification) of
+        {value, {uuid, UUIDStr}} ->
+            str_to_uuid(UUIDStr);
+        false ->
+            make_uuid()
+    end.
+
+make_uuid() ->
+    uuid:get_v4().
+
+make_props(UUID) ->
+    [{uuid, uuid_to_str(UUID)},
+     {status, <<"200">>},
+     {status_desc, <<"Success">>}].
+

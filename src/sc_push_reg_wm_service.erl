@@ -88,8 +88,8 @@ allowed_methods(ReqData, Ctx) ->
 
 -spec resource_exists(sc_push_wm_helper:wrq(), ctx()) ->
     {Exists::boolean(), sc_push_wm_helper:wrq(), ctx()}.
-resource_exists(ReqData, #ctx{svc_id = {Svc, Tok}} = Ctx) ->
-    Debug = sc_push_wm_helper:is_debug(ReqData, Ctx),
+resource_exists(ReqData, #ctx{svc_id = {Svc, Tok}, cfg = Cfg} = Ctx) ->
+    Debug = sc_push_wm_helper:is_debug(ReqData, Cfg),
     ?SC_DEBUG_LOG(Debug, "~p:resource_exists called", [?MODULE]),
     case sc_push_reg_api:get_registration_info_by_svc_tok(Svc, Tok) of
         notfound ->
@@ -166,7 +166,7 @@ finish_request(ReqData, Ctx) ->
 %% '''
 -spec delete_resource(sc_push_wm_helper:wrq(), ctx()) -> sc_push_wm_helper:wbool_ret().
 delete_resource(ReqData, Ctx) ->
-    Debug = sc_push_wm_helper:is_debug(ReqData, Ctx),
+    Debug = sc_push_wm_helper:is_debug(ReqData, Ctx#ctx.cfg),
     ?SC_DEBUG_LOG(Debug, "~p:delete_resource called", [?MODULE]),
     case sc_push_reg_api:deregister_svc_tok(Ctx#ctx.svc_id) of
         ok ->
@@ -186,7 +186,7 @@ delete_resource(ReqData, Ctx) ->
 %% '''
 -spec delete_completed(sc_push_wm_helper:wrq(), ctx()) -> sc_push_wm_helper:wbool_ret().
 delete_completed(ReqData, Ctx) ->
-    Debug = sc_push_wm_helper:is_debug(ReqData, Ctx),
+    Debug = sc_push_wm_helper:is_debug(ReqData, Ctx#ctx.cfg),
     ?SC_DEBUG_LOG(Debug, "~p:delete_completed called", [?MODULE]),
     {true, ReqData, Ctx}. % Deletes are immediate
 
@@ -194,14 +194,14 @@ delete_completed(ReqData, Ctx) ->
 -spec to_json(sc_push_wm_helper:wrq(), ctx()) ->
     {sc_push_wm_helper:json(), sc_push_wm_helper:wrq(), ctx()}.
 to_json(ReqData, #ctx{rsp = RegInfo} = Ctx) ->
-    Debug = sc_push_wm_helper:is_debug(ReqData, Ctx),
+    Debug = sc_push_wm_helper:is_debug(ReqData, Ctx#ctx.cfg),
     ?SC_DEBUG_LOG(Debug, "~p:to_json called", [?MODULE]),
     Result = sc_push_wm_helper:encode_props(RegInfo),
     {Result, ReqData, Ctx}.
 
 %% @doc Save registration data as JSON.
 from_json(ReqData, #ctx{req = EJSON} = Ctx) ->
-    Debug = sc_push_wm_helper:is_debug(ReqData, Ctx),
+    Debug = sc_push_wm_helper:is_debug(ReqData, Ctx#ctx.cfg),
     ?SC_DEBUG_LOG(Debug, "~p:from_json called, EJSON = ~p", [?MODULE, EJSON]),
     case sc_push_reg_api:register_id(EJSON) of
         ok ->
@@ -220,7 +220,7 @@ check_if_malformed_req('GET', ReqData, Ctx) ->
     check_service_id(ReqData, Ctx);
 
 check_if_malformed_req('PUT', ReqData, Ctx) ->
-    Debug = sc_push_wm_helper:is_debug(ReqData, Ctx),
+    Debug = sc_push_wm_helper:is_debug(ReqData, Ctx#ctx.cfg),
     ?SC_DEBUG_LOG(Debug, "~p:check_if_malformed_req called, ReqData = ~p",
         [?MODULE, ReqData]),
 

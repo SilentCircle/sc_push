@@ -326,18 +326,23 @@ send_msg_test(Config) ->
     RegPL = value(registration, Config),
     ok = sc_push:register_ids([RegPL]),
     Services = value(services, Config),
+    UUIDStr = make_uuid_str(),
     Notification0 = [
-        {alert, ?ALERT_MSG},
-        {tag, value(tag, RegPL)},
-        {return, success} % Will only work with sc_push_svc_null!
-    ],
+                     {uuid, UUIDStr},
+                     {alert, ?ALERT_MSG},
+                     {tag, value(tag, RegPL)},
+                     {return, success} % Will only work with sc_push_svc_null!
+                    ],
     [
-        begin
-                Svc = value(name, Service),
-                Notification = [{service, Svc} | Notification0],
-                Res = sc_push:send(Notification),
-                ct:pal("Sent notification, result = ~p~n", [Res])
-        end || Service <- Services
+     begin
+         Svc = value(name, Service),
+         Notification = [{service, Svc} | Notification0],
+         Res = sc_push:send(Notification),
+         ct:pal("Sent notification, result = ~p", [Res]),
+         [{ok, {UUID, Props}}] = Res,
+         UUIDStr = sc_util:val(uuid, Props),
+         UUIDStr = uuid_to_str(UUID)
+     end || Service <- Services
     ],
     deregister_ids(RegPL),
     ok.
@@ -351,18 +356,23 @@ send_msg_fail_test(Config) ->
     RegPL = value(registration, Config),
     ok = sc_push:register_ids([RegPL]),
     Services = value(services, Config),
-    Notification0 = [
-        {alert, ?ALERT_MSG},
-        {tag, value(tag, RegPL)},
-        {return, {error, forced_test_failure}} % Will only work with sc_push_svc_null!
-    ],
+    UUIDStr = make_uuid_str(),
+    Error = {error, forced_test_failure},
+    Notification0 = [{uuid, UUIDStr},
+                     {alert, ?ALERT_MSG},
+                     {tag, value(tag, RegPL)},
+                     {return, Error} % Will only work with sc_push_svc_null!
+                    ],
     [
         begin
                 Svc = value(name, Service),
                 Notification = [{service, Svc} | Notification0],
-                ct:pal("Sending notification: ~p~n", [Notification]),
-                [{error, forced_test_failure}] = sc_push:send(Notification),
-                ct:pal("Expected failure to send notification~n", [])
+                ct:pal("Sending notification: ~p", [Notification]),
+                Res = sc_push:send(Notification),
+                ct:pal("Sent notification, result = ~p", [Res]),
+                [{error, {UUID, Error}}] = Res,
+                UUIDStr = uuid_to_str(UUID),
+                ct:pal("Expected failure to send notification", [])
         end || Service <- Services
     ],
     deregister_ids(RegPL),
@@ -379,18 +389,18 @@ send_msg_no_reg_test(Config) ->
     Services = value(services, Config),
     FakeTag = <<"$$Completely bogus tag$$">>,
     Notification0 = [
-        {alert, ?ALERT_MSG},
-        {tag, FakeTag}
-    ],
+                     {alert, ?ALERT_MSG},
+                     {tag, FakeTag}
+                    ],
     [
-        begin
-                Svc = value(name, Service),
-                Notification = [{service, Svc} | Notification0],
-                Results = sc_push:send(Notification),
-                Errors = proplists:get_value(error, Results),
-                [{reg_not_found_for_tag, FakeTag}] = Errors,
-                ct:pal("Got expected error (reg_not_found_for_tag) from send notification~n", [])
-        end || Service <- Services
+     begin
+         Svc = value(name, Service),
+         Notification = [{service, Svc} | Notification0],
+         Results = sc_push:send(Notification),
+         Errors = proplists:get_value(error, Results),
+         [{reg_not_found_for_tag, FakeTag}] = Errors,
+         ct:pal("Got expected error (reg_not_found_for_tag) from send notification~n", [])
+     end || Service <- Services
     ],
     deregister_ids(RegPL),
     ok.
@@ -404,22 +414,41 @@ async_send_msg_test(Config) ->
     RegPL = value(registration, Config),
     ok = sc_push:register_ids([RegPL]),
     Services = value(services, Config),
+    UUIDStr = make_uuid_str(),
     Notification0 = [
-        {alert, ?ALERT_MSG},
-        {tag, value(tag, RegPL)},
-        {return, success} % Will only work with sc_push_svc_null!
-    ],
+                     {uuid, UUIDStr},
+                     {alert, ?ALERT_MSG},
+                     {tag, value(tag, RegPL)},
+                     {return, success} % Will only work with sc_push_svc_null!
+                    ],
     [
-        begin
-                Svc = value(name, Service),
-                Notification = [{service, Svc} | Notification0],
-                Res = sc_push:async_send(Notification),
-                ct:pal("Sent notification, result = ~p~n", [Res]),
-                [ok] = Res
-        end || Service <- Services
+     begin
+         Svc = value(name, Service),
+         Notification = [{service, Svc} | Notification0],
+         Res = sc_push:async_send(Notification),
+         ct:pal("Sent notification, result = ~p~n", [Res]),
+         [{ok, {submitted, UUID}}] = Res,
+         UUIDStr = uuid_to_str(UUID),
+         {UUID, AsyncResp} = wait_for_async_response(UUID),
+         {ok, Props} = AsyncResp,
+         UUIDStr = sc_util:val(uuid, Props),
+         UUIDStr = uuid_to_str(UUID)
+     end || Service <- Services
     ],
     deregister_ids(RegPL),
     ok.
+
+wait_for_async_response(UUID) ->
+    receive
+        {null, v1, {UUID, _Resp}=Data} ->
+            ct:pal("Get async response: ~p", [Data]),
+            Data;
+        Other ->
+            ct:fail("Got unexpected async_resp: ~p", [Other])
+    after
+        1000 ->
+            ct:fail("Timed out without getting response")
+    end.
 
 %%====================================================================
 %% REST API tests
@@ -764,4 +793,10 @@ val_s(Key, PL) ->
         false ->
             ""
     end.
+
+uuid_to_str(UUID) ->
+    uuid:uuid_to_string(UUID, binary_standard).
+
+make_uuid_str() ->
+    uuid_to_str(uuid:get_v4()).
 

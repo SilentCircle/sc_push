@@ -545,7 +545,7 @@ send(Notification, Opts) ->
 %% The result will be a list of `{ok, term()}' or `{error, term()}'.
 %%
 %% For apnsv3, `term()' is either `{queued, uuid()}' or `{submitted, uuid()}'.
-%% The asyncronous response is sent to the calling pid's mailbox as a tuple
+%% The asynchronous response is sent to the calling pid's mailbox as a tuple
 %% `{service_response(), version(), data()}', where `service_response()' is an
 %% atom `` '<service>_response' '', e.g.  `` 'apns_response' '', `version()' is
 %% a service-specific atom (e.g. `v3'), and `data()' is a proplist of

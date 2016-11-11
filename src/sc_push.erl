@@ -138,9 +138,17 @@
                          service_specific_spec() |
                          receivers()].
 
--type send_success() :: {ok, term()}.
--type send_error() :: {error, term()}.
--type send_result() :: send_success() | send_error().
+-type uuid() :: binary(). % A raw uuid in the form `<<_:128>>'.
+-type props() :: proplists:proplist().
+
+-type sync_send_result() :: {ok, {uuid(), props()}} | {error, term()}.
+-type sync_send_results() :: [sync_send_result()].
+
+-type async_status() :: submitted | queued.
+-type async_send_result() :: {ok, {async_status(), uuid()}} | {error, term()}.
+-type async_send_results() :: [async_send_result()].
+
+-type send_result() :: sync_send_result() | async_send_result().
 
 -type mode() :: sync | async.
 
@@ -516,8 +524,13 @@ get_session_pid(Name) when is_atom(Name) ->
 %% in question.
 %%
 %% ==== Example ====
+%%
+%% Providing a UUID as shown is not required, but is recommended for tracking
+%% purposes.
+%%
 %% ```
 %% Notification = [
+%%     {uuid, <<"4091b3a2-df6a-443e-a119-8f1d430ed53c">>},
 %%     {alert, <<"Notification to be sent">>},
 %%     {tag, <<"user@domain.com">>},
 %%     % ... other generic options ...
@@ -526,42 +539,43 @@ get_session_pid(Name) when is_atom(Name) ->
 %%     {etc, [FutureOpts]} % Obviously etc is not a real service.
 %% ].
 %% '''
+%% @see sync_send_results()
 %% @end
 %%--------------------------------------------------------------------
 -spec send(Notification) -> Result when
-      Notification :: notification(), Result :: [send_result()].
+      Notification :: notification(), Result :: sync_send_results().
 send(Notification) when is_list(Notification) ->
     send_notification(sync, Notification, []).
 
 -spec send(Notification, Opts) -> Result when
       Notification :: notification(), Opts :: std_proplist(),
-      Result :: [send_result()].
+      Result :: sync_send_results().
 send(Notification, Opts) ->
     send_notification(sync, Notification, Opts).
 
 %%--------------------------------------------------------------------
-%% @doc Asynchronously sends a notification specified by proplist `Notification'.
-%% The contents of the proplist differ depending on the push service used.
-%% The result will be a list of `{ok, term()}' or `{error, term()}'.
+%% @doc Asynchronously sends a notification specified by proplist
+%% `Notification'.  The contents of the proplist differ depending on the push
+%% service used (see {@link notification()}).
 %%
-%% For apnsv3, `term()' is either `{queued, uuid()}' or `{submitted, uuid()}'.
-%% The asynchronous response is sent to the calling pid's mailbox as a tuple
-%% `{service_response(), version(), data()}', where `service_response()' is an
-%% atom `` '<service>_response' '', e.g.  `` 'apns_response' '', `version()' is
-%% a service-specific atom (e.g. `v3'), and `data()' is a proplist of
-%% service-specific data, suitable for conversion to JSON.
+%% The asynchronous response is sent to the calling pid's mailbox as a tuple.
+%% The tuple is defined as  `async_message()' as shown below.
 %%
-%% TODO: Harmonize all services to return same format and behave the same.
+%% ```
+%% -type svc_response_id() :: apns_response | gcm_response | atom().
+%% -type version() :: atom(). % For example, `` 'v1' ''.
+%% -type async_message() :: {svc_response_id(), version(), gen_send_result()}.
+%% '''
 %% @end
 %%--------------------------------------------------------------------
 -spec async_send(Notification) -> Result when
-      Notification :: notification(), Result :: [send_result()].
+      Notification :: notification(), Result :: async_send_results().
 async_send(Notification) when is_list(Notification) ->
     send_notification(async, Notification, []).
 
 -spec async_send(Notification, Opts) -> Result when
       Notification :: notification(), Opts :: std_proplist(),
-      Result :: [send_result()].
+      Result ::  async_send_results().
 async_send(Notification, Opts) ->
     send_notification(async, Notification, Opts).
 

@@ -103,6 +103,36 @@ app_id() = binary()
 
 
 
+### <a name="type-async_send_result">async_send_result()</a> ###
+
+
+<pre><code>
+async_send_result() = {ok, {<a href="#type-async_status">async_status()</a>, <a href="#type-uuid">uuid()</a>}} | {error, term()}
+</code></pre>
+
+
+
+
+### <a name="type-async_send_results">async_send_results()</a> ###
+
+
+<pre><code>
+async_send_results() = [<a href="#type-async_send_result">async_send_result()</a>]
+</code></pre>
+
+
+
+
+### <a name="type-async_status">async_status()</a> ###
+
+
+<pre><code>
+async_status() = submitted | queued
+</code></pre>
+
+
+
+
 ### <a name="type-child_id">child_id()</a> ###
 
 
@@ -154,6 +184,16 @@ notification() = [<a href="#type-alert_spec">alert_spec()</a> | <a href="#type-t
 
 
 
+### <a name="type-props">props()</a> ###
+
+
+<pre><code>
+props() = <a href="proplists.md#type-proplist">proplists:proplist()</a>
+</code></pre>
+
+
+
+
 ### <a name="type-receiver_spec">receiver_spec()</a> ###
 
 
@@ -189,36 +229,6 @@ receivers() = {receivers, <a href="#type-receiver_specs">receiver_specs()</a>}
 
 <pre><code>
 reg_id_keys() = [<a href="sc_push_reg_db.md#type-reg_id_key">sc_push_reg_db:reg_id_key()</a>]
-</code></pre>
-
-
-
-
-### <a name="type-send_error">send_error()</a> ###
-
-
-<pre><code>
-send_error() = {error, term()}
-</code></pre>
-
-
-
-
-### <a name="type-send_result">send_result()</a> ###
-
-
-<pre><code>
-send_result() = <a href="#type-send_success">send_success()</a> | <a href="#type-send_error">send_error()</a>
-</code></pre>
-
-
-
-
-### <a name="type-send_success">send_success()</a> ###
-
-
-<pre><code>
-send_success() = {ok, term()}
 </code></pre>
 
 
@@ -315,6 +325,26 @@ svc_toks() = [<a href="#type-svc_tok">svc_tok()</a>]
 
 
 
+### <a name="type-sync_send_result">sync_send_result()</a> ###
+
+
+<pre><code>
+sync_send_result() = {ok, {<a href="#type-uuid">uuid()</a>, <a href="#type-props">props()</a>}} | {error, term()}
+</code></pre>
+
+
+
+
+### <a name="type-sync_send_results">sync_send_results()</a> ###
+
+
+<pre><code>
+sync_send_results() = [<a href="#type-sync_send_result">sync_send_result()</a>]
+</code></pre>
+
+
+
+
 ### <a name="type-tag">tag()</a> ###
 
 
@@ -362,12 +392,25 @@ tags() = [<a href="#type-tag">tag()</a>]
 token() = binary()
 </code></pre>
 
+
+
+
+### <a name="type-uuid">uuid()</a> ###
+
+
+<pre><code>
+uuid() = binary()
+</code></pre>
+
+A raw uuid in the form `<<_:128>>`.
+
 <a name="index"></a>
 
 ## Function Index ##
 
 
-<table width="100%" border="1" cellspacing="0" cellpadding="2" summary="function index"><tr><td valign="top"><a href="#async_send-1">async_send/1</a></td><td>Asynchronously sends a notification specified by proplist <code>Notification</code>.</td></tr><tr><td valign="top"><a href="#async_send-2">async_send/2</a></td><td></td></tr><tr><td valign="top"><a href="#deregister_device_ids-1">deregister_device_ids/1</a></td><td>Deregister multiple registered device IDs.</td></tr><tr><td valign="top"><a href="#deregister_id-1">deregister_id/1</a></td><td>Deregister a registered ID.</td></tr><tr><td valign="top"><a href="#deregister_ids-1">deregister_ids/1</a></td><td>Deregister multiple registered IDs.</td></tr><tr><td valign="top"><a href="#get_all_service_configs-0">get_all_service_configs/0</a></td><td>Get all service configurations.</td></tr><tr><td valign="top"><a href="#get_registration_info_by_id-1">get_registration_info_by_id/1</a></td><td>Get registration info corresponding to a device ID.</td></tr><tr><td valign="top"><a href="#get_registration_info_by_svc_tok-2">get_registration_info_by_svc_tok/2</a></td><td>Get registration info corresponding to service and reg id.</td></tr><tr><td valign="top"><a href="#get_registration_info_by_tag-1">get_registration_info_by_tag/1</a></td><td>Get registration info corresponding to a tag.</td></tr><tr><td valign="top"><a href="#get_service_config-1">get_service_config/1</a></td><td>Get service configuration.</td></tr><tr><td valign="top"><a href="#get_session_pid-1">get_session_pid/1</a></td><td>Get pid of named session.</td></tr><tr><td valign="top"><a href="#make_service_child_spec-1">make_service_child_spec/1</a></td><td>Make a supervisor child spec for a service.</td></tr><tr><td valign="top"><a href="#quiesce_all_services-0">quiesce_all_services/0</a></td><td>Quiesce all services.</td></tr><tr><td valign="top"><a href="#quiesce_service-1">quiesce_service/1</a></td><td>Quiesce a service.</td></tr><tr><td valign="top"><a href="#quiesce_session-2">quiesce_session/2</a></td><td>Quiesce session.</td></tr><tr><td valign="top"><a href="#register_id-1">register_id/1</a></td><td>
+<table width="100%" border="1" cellspacing="0" cellpadding="2" summary="function index"><tr><td valign="top"><a href="#async_send-1">async_send/1</a></td><td>Asynchronously sends a notification specified by proplist
+<code>Notification</code>.</td></tr><tr><td valign="top"><a href="#async_send-2">async_send/2</a></td><td></td></tr><tr><td valign="top"><a href="#deregister_device_ids-1">deregister_device_ids/1</a></td><td>Deregister multiple registered device IDs.</td></tr><tr><td valign="top"><a href="#deregister_id-1">deregister_id/1</a></td><td>Deregister a registered ID.</td></tr><tr><td valign="top"><a href="#deregister_ids-1">deregister_ids/1</a></td><td>Deregister multiple registered IDs.</td></tr><tr><td valign="top"><a href="#get_all_service_configs-0">get_all_service_configs/0</a></td><td>Get all service configurations.</td></tr><tr><td valign="top"><a href="#get_registration_info_by_id-1">get_registration_info_by_id/1</a></td><td>Get registration info corresponding to a device ID.</td></tr><tr><td valign="top"><a href="#get_registration_info_by_svc_tok-2">get_registration_info_by_svc_tok/2</a></td><td>Get registration info corresponding to service and reg id.</td></tr><tr><td valign="top"><a href="#get_registration_info_by_tag-1">get_registration_info_by_tag/1</a></td><td>Get registration info corresponding to a tag.</td></tr><tr><td valign="top"><a href="#get_service_config-1">get_service_config/1</a></td><td>Get service configuration.</td></tr><tr><td valign="top"><a href="#get_session_pid-1">get_session_pid/1</a></td><td>Get pid of named session.</td></tr><tr><td valign="top"><a href="#make_service_child_spec-1">make_service_child_spec/1</a></td><td>Make a supervisor child spec for a service.</td></tr><tr><td valign="top"><a href="#quiesce_all_services-0">quiesce_all_services/0</a></td><td>Quiesce all services.</td></tr><tr><td valign="top"><a href="#quiesce_service-1">quiesce_service/1</a></td><td>Quiesce a service.</td></tr><tr><td valign="top"><a href="#quiesce_session-2">quiesce_session/2</a></td><td>Quiesce session.</td></tr><tr><td valign="top"><a href="#register_id-1">register_id/1</a></td><td>
 Register to receive push notifications.</td></tr><tr><td valign="top"><a href="#register_ids-1">register_ids/1</a></td><td>Perform multiple registrations.</td></tr><tr><td valign="top"><a href="#register_service-1">register_service/1</a></td><td>Register a service in the service configuration registry.</td></tr><tr><td valign="top"><a href="#send-1">send/1</a></td><td>Send a notification specified by proplist <code>Notification</code>.</td></tr><tr><td valign="top"><a href="#send-2">send/2</a></td><td></td></tr><tr><td valign="top"><a href="#start-0">start/0</a></td><td></td></tr><tr><td valign="top"><a href="#start_service-1">start_service/1</a></td><td>Start a push service.</td></tr><tr><td valign="top"><a href="#start_session-2">start_session/2</a></td><td>Start named session as described in the options proplist <code>Opts</code>.</td></tr><tr><td valign="top"><a href="#stop_service-1">stop_service/1</a></td><td>Stops a service and all sessions for that service.</td></tr><tr><td valign="top"><a href="#stop_session-2">stop_session/2</a></td><td>Stop named session.</td></tr></table>
 
 
@@ -383,18 +426,20 @@ Register to receive push notifications.</td></tr><tr><td valign="top"><a href="#
 async_send(Notification) -&gt; Result
 </code></pre>
 
-<ul class="definitions"><li><code>Notification = <a href="#type-notification">notification()</a></code></li><li><code>Result = [<a href="#type-send_result">send_result()</a>]</code></li></ul>
+<ul class="definitions"><li><code>Notification = <a href="#type-notification">notification()</a></code></li><li><code>Result = <a href="#type-async_send_results">async_send_results()</a></code></li></ul>
 
-Asynchronously sends a notification specified by proplist `Notification`.
-The contents of the proplist differ depending on the push service used.
-The result will be a list of `{ok, term()}` or `{error, term()}`.
+Asynchronously sends a notification specified by proplist
+`Notification`.  The contents of the proplist differ depending on the push
+service used (see [`notification()`](#type-notification)).
 
-For apnsv3, `term()` is either `{queued, uuid()}` or `{submitted, uuid()}`.
-The asynchronous response is sent to the calling pid's mailbox as a tuple
-`{service_response(), version(), data()}`, where `service_response()` is an
-atom `'<service>_response'`, e.g.`'apns_response'`, `version()` is
-a service-specific atom (e.g. `v3`), and `data()` is a proplist of
-service-specific data, suitable for conversion to JSON.
+The asynchronous response is sent to the calling pid's mailbox as a tuple.
+The tuple is defined as`async_message()` as shown below.
+
+```
+  -type svc_response_id() :: apns_response | gcm_response | atom().
+  -type version() :: atom(). % For example, `` 'v1' ''.
+  -type async_message() :: {svc_response_id(), version(), gen_send_result()}.
+```
 
 <a name="async_send-2"></a>
 
@@ -404,7 +449,7 @@ service-specific data, suitable for conversion to JSON.
 async_send(Notification, Opts) -&gt; Result
 </code></pre>
 
-<ul class="definitions"><li><code>Notification = <a href="#type-notification">notification()</a></code></li><li><code>Opts = <a href="#type-std_proplist">std_proplist()</a></code></li><li><code>Result = [<a href="#type-send_result">send_result()</a>]</code></li></ul>
+<ul class="definitions"><li><code>Notification = <a href="#type-notification">notification()</a></code></li><li><code>Opts = <a href="#type-std_proplist">std_proplist()</a></code></li><li><code>Result = <a href="#type-async_send_results">async_send_results()</a></code></li></ul>
 
 <a name="deregister_device_ids-1"></a>
 
@@ -696,7 +741,7 @@ __See also:__ [start_service/1](#start_service-1).
 send(Notification) -&gt; Result
 </code></pre>
 
-<ul class="definitions"><li><code>Notification = <a href="#type-notification">notification()</a></code></li><li><code>Result = [<a href="#type-send_result">send_result()</a>]</code></li></ul>
+<ul class="definitions"><li><code>Notification = <a href="#type-notification">notification()</a></code></li><li><code>Result = <a href="#type-sync_send_results">sync_send_results()</a></code></li></ul>
 
 Send a notification specified by proplist `Notification`. The
 contents of the proplist differ depending on the push service used.
@@ -708,9 +753,12 @@ in question.
 
 <h5><a name="Example">Example</a></h5>
 
+Providing a UUID as shown is not required, but is recommended for tracking
+purposes.
 
 ```
   Notification = [
+      {uuid, <<"4091b3a2-df6a-443e-a119-8f1d430ed53c">>},
       {alert, <<"Notification to be sent">>},
       {tag, <<"user@domain.com">>},
       % ... other generic options ...
@@ -720,6 +768,8 @@ in question.
   ].
 ```
 
+__See also:__ [sync_send_results()](#type-sync_send_results).
+
 <a name="send-2"></a>
 
 ### send/2 ###
@@ -728,7 +778,7 @@ in question.
 send(Notification, Opts) -&gt; Result
 </code></pre>
 
-<ul class="definitions"><li><code>Notification = <a href="#type-notification">notification()</a></code></li><li><code>Opts = <a href="#type-std_proplist">std_proplist()</a></code></li><li><code>Result = [<a href="#type-send_result">send_result()</a>]</code></li></ul>
+<ul class="definitions"><li><code>Notification = <a href="#type-notification">notification()</a></code></li><li><code>Opts = <a href="#type-std_proplist">std_proplist()</a></code></li><li><code>Result = <a href="#type-sync_send_results">sync_send_results()</a></code></li></ul>
 
 <a name="start-0"></a>
 

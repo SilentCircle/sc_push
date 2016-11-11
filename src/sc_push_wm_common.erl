@@ -32,24 +32,37 @@
         ensure_path_item/2
     ]).
 
+-include_lib("lager/include/lager.hrl").
+
 -spec send_push(sc_types:proplist(atom(), string() | binary()))
     -> {ok, term()} | {error, binary()}.
 send_push(Props) ->
     % Opts = [{callback,
     % fun(Nf,Req,Res) ->
     %          io:format("~p\n~p\n~p\n", [Nf,Req,Res]) end}]
-    Opts = [{callback, fun(_Nf, _Req, _Res) -> ok end}],
-    try sc_push:async_send(Props, Opts) of
-        [{ok, {Sts, UUID}}] when is_atom(Sts) ->
-            {ok, [{ok, [{status, Sts}, {id, UUID}]}]};
+    Opts = [],
+    Res = try
+              sc_push:async_send(Props, Opts)
+          catch
+              _Class:Reason ->
+                  Msg = list_to_binary(io_lib:format("~p", [Reason])),
+                  {error, Msg}
+          end,
+
+    lager:debug("[~p,~p] send_push, result: ~p~nprops: ~p",
+                [?MODULE, ?LINE, Res, Props]),
+
+    case Res of
+        [{ok, {Sts, <<_:128>> = UUID}}] when is_atom(Sts) ->
+            {ok, [{ok, [{status, Sts},
+                        {uuid, uuid_to_str(UUID)}]}]};
+        [{error, {Sts, <<_:128>> = UUID}}] when is_atom(Sts) ->
+            {ok, [{error, [{status, Sts},
+                           {uuid, uuid_to_str(UUID)}]}]};
         [{error, _Reason}] = Error  ->
             {ok, Error};
         Results ->
             {ok, Results}
-    catch
-        _Class:Reason ->
-            Msg = list_to_binary(io_lib:format("~p", [Reason])),
-            {error, Msg}
     end.
 
 -spec parse_json(binary()) ->
@@ -131,4 +144,7 @@ ensure_path_item(Key, ReqData) ->
         Val ->
             {ok, {Key, sc_util:to_bin(Val)}}
     end.
+
+uuid_to_str(<<_:128>> = UUID) ->
+    uuid:uuid_to_string(UUID, binary_standard).
 

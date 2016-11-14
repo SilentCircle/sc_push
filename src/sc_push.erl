@@ -79,12 +79,12 @@
 %%-----------------------------------------------------------------------
 %% Types
 %%-----------------------------------------------------------------------
--type alert() :: binary().
--type tag() :: binary().
--type token() :: binary().
--type service() :: atom(). % e.g. apns, gcm
--type app_id() :: binary().
--type dist() :: binary().
+-type alert() :: binary().  % Alert message as binary string.
+-type tag() :: binary().    % Opaque group identifier.
+-type token() :: binary().  % APNS token as hex string, GCM registration id.
+-type service() :: atom().  % Service type, e.g. apns, gcm
+-type app_id() :: binary(). % AppId as binary string, e.g. `<<"com.foo.app">>'.
+-type dist() :: binary().   % Distribution, e.g. `<<"prod">>', `<<"dev">>'.
 
 -type std_proplist() :: sc_types:proplist(atom(), term()).
 -type reg_api_func_name() :: 'get_registration_info_by_device_id' |
@@ -198,6 +198,55 @@
         make_service_child_spec/1
     ]).
 
+-export_type([
+              alert/0,
+              alert_spec/0,
+              app_id/0,
+              async_send_result/0,
+              async_send_results/0,
+              async_status/0,
+              device_id/0,
+              device_id_spec/0,
+              device_ids/0,
+              dist/0,
+              filtered_result/0,
+              mode/0,
+              notification/0,
+              props/0,
+              receiver_regs/0,
+              receiver_spec/0,
+              receiver_specs/0,
+              receivers/0,
+              reg_api_func_name/0,
+              reg_err/0,
+              reg_err_list/0,
+              reg_err_term/0,
+              reg_info/0,
+              reg_info_list/0,
+              reg_info_prop/0,
+              reg_ok/0,
+              reg_result/0,
+              reg_results/0,
+              send_result/0,
+              service/0,
+              service_specific_spec/0,
+              std_proplist/0,
+              svc_appid_tok/0,
+              svc_appid_tok_spec/0,
+              svc_appid_toks/0,
+              svc_tok/0,
+              svc_tok_spec/0,
+              svc_toks/0,
+              sync_send_result/0,
+              sync_send_results/0,
+              tag/0,
+              tag_spec/0,
+              tag_spec_mult/0,
+              tags/0,
+              token/0,
+              uuid/0
+             ]).
+
 start() ->
     ensure_started(sasl),
     ensure_started(compiler),
@@ -269,8 +318,8 @@ start() ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec start_service(sc_types:proplist(atom(), term())) ->
-      {ok, pid()} | {error, term()}.
+-spec start_service(ServiceOpts) -> Result when
+      ServiceOpts :: std_proplist(), Result :: {ok, pid()} | {error, term()}.
 start_service(ServiceOpts) when is_list(ServiceOpts) ->
     Desc = sc_util:req_val(description, ServiceOpts),
     ChildSpec = make_service_child_spec(ServiceOpts),
@@ -279,7 +328,7 @@ start_service(ServiceOpts) when is_list(ServiceOpts) ->
         {ok, _} = Result ->
             ok = register_service(ServiceOpts),
             Result;
-        Err ->
+        {error, _} = Err ->
             Err
     end.
 
@@ -288,15 +337,15 @@ start_service(ServiceOpts) when is_list(ServiceOpts) ->
 %% @end
 %%--------------------------------------------------------------------
 -type child_id() :: term(). % Not a pid().
--spec stop_service(pid() | child_id()) ->
-      ok | {error, term()}.
+-spec stop_service(Id) -> Result when
+      Id :: pid() | child_id(), Result :: ok | {error, term()}.
 stop_service(Id) ->
     Res = case supervisor:terminate_child(sc_push_sup, Id) of
-        ok ->
-            supervisor:delete_child(sc_push_sup, Id);
-        Err ->
-            Err
-    end,
+              ok ->
+                  supervisor:delete_child(sc_push_sup, Id);
+              {error, _} = Err ->
+                  Err
+          end,
     unregister_service(Id),
     Res.
 
@@ -340,8 +389,8 @@ quiesce_all_services() ->
 %% @see start_service/1
 %% @end
 %%--------------------------------------------------------------------
--spec make_service_child_spec(sc_types:proplist(atom(), term())) ->
-      supervisor:child_spec().
+-spec make_service_child_spec(Opts) -> Result when
+      Opts :: std_proplist(), Result :: supervisor:child_spec().
 make_service_child_spec(Opts) when is_list(Opts) ->
     Name = sc_util:req_val(name, Opts),
     SupMod = sc_util:req_val(mod, Opts),
@@ -355,7 +404,8 @@ make_service_child_spec(Opts) when is_list(Opts) ->
 %% @see start_service/1
 %% @end
 %%--------------------------------------------------------------------
--spec register_service(sc_types:proplist(atom(), term())) -> ok.
+-spec register_service(Svc) -> ok when
+      Svc :: std_proplist().
 register_service(Svc) when is_list(Svc) ->
     sc_push_lib:register_service(Svc).
 
@@ -364,7 +414,8 @@ register_service(Svc) when is_list(Svc) ->
 %% @see start_service/1
 %% @end
 %%--------------------------------------------------------------------
--spec unregister_service(ServiceName::atom()) -> ok.
+-spec unregister_service(Name) -> ok when
+      Name :: atom().
 unregister_service(Name) when is_atom(Name) ->
     sc_push_lib:unregister_service(Name).
 
@@ -373,8 +424,8 @@ unregister_service(Name) when is_atom(Name) ->
 %% @see start_service/1
 %% @end
 %%--------------------------------------------------------------------
--spec get_service_config(Service::term()) ->
-    {ok, std_proplist()} | {error, term()}.
+-spec get_service_config(Service) -> Result when
+      Service :: term(), Result :: {ok, std_proplist()} | {error, term()}.
 get_service_config(Service) ->
     sc_push_lib:get_service_config(Service).
 
@@ -382,7 +433,8 @@ get_service_config(Service) ->
 %% @doc Get all service configurations
 %% @end
 %%--------------------------------------------------------------------
--spec get_all_service_configs() -> [std_proplist()].
+-spec get_all_service_configs() -> SvcConfigs when
+      SvcConfigs :: [std_proplist()].
 get_all_service_configs() ->
     sc_push_lib:get_all_service_configs().
 
@@ -462,8 +514,9 @@ get_all_service_configs() ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec start_session(Service::atom(), Opts::list()) ->
-    {ok, pid()} | {error, already_started} | {error, Reason::term()}.
+-spec start_session(Service, Opts) -> Result when
+      Service :: atom(), Opts :: std_proplist(),
+      Result :: {ok, Pid} | {error, Reason}, Pid :: pid(), Reason :: term().
 start_session(Service, Opts) when is_atom(Service), is_list(Opts) ->
     case get_service_config(Service) of
         {ok, SvcConfig} ->
@@ -472,7 +525,7 @@ start_session(Service, Opts) when is_atom(Service), is_list(Opts) ->
             Timeout = sc_util:val(start_timeout, Opts, 5000),
             ChildSpec = sc_util:make_child_spec(Opts, Timeout),
             ApiMod:start_session(SessionName, ChildSpec);
-        Error ->
+        {error, _} = Error ->
             Error
     end.
 
@@ -480,13 +533,15 @@ start_session(Service, Opts) when is_atom(Service), is_list(Opts) ->
 %% @doc Stop named session.
 %% @end
 %%--------------------------------------------------------------------
--spec stop_session(atom(), atom()) -> ok | {error, Reason::term()}.
+-spec stop_session(Service, Name) -> Result when
+      Service :: atom(), Name :: atom(),
+      Result :: ok | {error, Reason}, Reason :: term().
 stop_session(Service, Name) when is_atom(Service), is_atom(Name) ->
     case get_service_config(Service) of
         {ok, SvcConfig} ->
             ApiMod = sc_util:req_val(mod, SvcConfig),
             ApiMod:stop_session(Name);
-        Error ->
+        {error, _} = Error ->
             Error
     end.
 
@@ -496,13 +551,15 @@ stop_session(Service, Name) when is_atom(Service), is_atom(Name) ->
 %% no longer any in-flight requests, the session is stopped.
 %% @end
 %%--------------------------------------------------------------------
--spec quiesce_session(atom(), atom()) -> ok | {error, Reason::term()}.
+-spec quiesce_session(Service, Name) -> Result when
+      Service :: atom(), Name :: atom(),
+      Result :: ok | {error, Reason}, Reason :: term().
 quiesce_session(Service, Name) when is_atom(Service), is_atom(Name) ->
     case get_service_config(Service) of
         {ok, SvcConfig} ->
             ApiMod = sc_util:req_val(mod, SvcConfig),
             ApiMod:quiesce_session(Name);
-        Error ->
+        {error, _} = Error ->
             Error
     end.
 
@@ -510,7 +567,8 @@ quiesce_session(Service, Name) when is_atom(Service), is_atom(Name) ->
 %% @doc Get pid of named session.
 %% @end
 %%--------------------------------------------------------------------
--spec get_session_pid(Name::atom()) -> pid() | undefined.
+-spec get_session_pid(Name) -> Result when
+      Name :: atom(), Result :: pid() | undefined.
 get_session_pid(Name) when is_atom(Name) ->
     erlang:whereis(Name).
 

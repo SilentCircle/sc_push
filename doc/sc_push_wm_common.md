@@ -99,9 +99,10 @@ parse_json(ReqBody::binary()) -&gt; {ok, <a href="sc_types.md#type-proplist">sc_
 ### send_push/1 ###
 
 <pre><code>
-send_push(Props::<a href="sc_types.md#type-proplist">sc_types:proplist</a>(atom(), string() | binary())) -&gt; {ok, term()} | {error, binary()}
+send_push(Notification) -&gt; Result
 </code></pre>
-<br />
+
+<ul class="definitions"><li><code>Notification = <a href="sc_push.md#type-notification">sc_push:notification()</a></code></li><li><code>Result = {ok, term()} | {error, binary()}</code></li></ul>
 
 <a name="store_prop-2"></a>
 

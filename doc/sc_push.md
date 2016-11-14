@@ -80,6 +80,7 @@ More formally, the notification specification is defined in
 alert() = binary()
 </code></pre>
 
+Alert message as binary string.
 
 
 
@@ -100,6 +101,7 @@ alert_spec() = {alert, <a href="#type-alert">alert()</a>}
 app_id() = binary()
 </code></pre>
 
+AppId as binary string, e.g. `<<"com.foo.app">>`.
 
 
 
@@ -174,6 +176,37 @@ device_ids() = [<a href="#type-device_id">device_id()</a>]
 
 
 
+### <a name="type-dist">dist()</a> ###
+
+
+<pre><code>
+dist() = binary()
+</code></pre>
+
+Distribution, e.g. `<<"prod">>`, `<<"dev">>`.
+
+
+
+### <a name="type-filtered_result">filtered_result()</a> ###
+
+
+<pre><code>
+filtered_result() = {<a href="#type-reg_info_list">reg_info_list()</a>, <a href="#type-reg_err_list">reg_err_list()</a>}
+</code></pre>
+
+
+
+
+### <a name="type-mode">mode()</a> ###
+
+
+<pre><code>
+mode() = sync | async
+</code></pre>
+
+
+
+
 ### <a name="type-notification">notification()</a> ###
 
 
@@ -189,6 +222,16 @@ notification() = [<a href="#type-alert_spec">alert_spec()</a> | <a href="#type-t
 
 <pre><code>
 props() = <a href="proplists.md#type-proplist">proplists:proplist()</a>
+</code></pre>
+
+
+
+
+### <a name="type-receiver_regs">receiver_regs()</a> ###
+
+
+<pre><code>
+receiver_regs() = <a href="#type-filtered_result">filtered_result()</a>
 </code></pre>
 
 
@@ -224,11 +267,121 @@ receivers() = {receivers, <a href="#type-receiver_specs">receiver_specs()</a>}
 
 
 
+### <a name="type-reg_api_func_name">reg_api_func_name()</a> ###
+
+
+<pre><code>
+reg_api_func_name() = get_registration_info_by_device_id | get_registration_info_by_svc_tok | get_registration_info_by_tag
+</code></pre>
+
+
+
+
+### <a name="type-reg_err">reg_err()</a> ###
+
+
+<pre><code>
+reg_err() = {error, <a href="#type-reg_err_term">reg_err_term()</a>}
+</code></pre>
+
+
+
+
+### <a name="type-reg_err_list">reg_err_list()</a> ###
+
+
+<pre><code>
+reg_err_list() = [<a href="#type-reg_err_term">reg_err_term()</a>]
+</code></pre>
+
+
+
+
+### <a name="type-reg_err_term">reg_err_term()</a> ###
+
+
+<pre><code>
+reg_err_term() = term()
+</code></pre>
+
+
+
+
 ### <a name="type-reg_id_keys">reg_id_keys()</a> ###
 
 
 <pre><code>
 reg_id_keys() = [<a href="sc_push_reg_db.md#type-reg_id_key">sc_push_reg_db:reg_id_key()</a>]
+</code></pre>
+
+
+
+
+### <a name="type-reg_info">reg_info()</a> ###
+
+
+<pre><code>
+reg_info() = [<a href="#type-reg_info_prop">reg_info_prop()</a>]
+</code></pre>
+
+
+
+
+### <a name="type-reg_info_list">reg_info_list()</a> ###
+
+
+<pre><code>
+reg_info_list() = [<a href="#type-reg_info">reg_info()</a>]
+</code></pre>
+
+
+
+
+### <a name="type-reg_info_prop">reg_info_prop()</a> ###
+
+
+<pre><code>
+reg_info_prop() = {service, <a href="#type-service">service()</a>} | {token, <a href="#type-token">token()</a>} | {app_id, <a href="#type-app_id">app_id()</a>} | {dist, <a href="#type-dist">dist()</a>}
+</code></pre>
+
+
+
+
+### <a name="type-reg_ok">reg_ok()</a> ###
+
+
+<pre><code>
+reg_ok() = {ok, <a href="#type-reg_info_list">reg_info_list()</a>}
+</code></pre>
+
+
+
+
+### <a name="type-reg_result">reg_result()</a> ###
+
+
+<pre><code>
+reg_result() = <a href="#type-reg_ok">reg_ok()</a> | <a href="#type-reg_err">reg_err()</a>
+</code></pre>
+
+
+
+
+### <a name="type-reg_results">reg_results()</a> ###
+
+
+<pre><code>
+reg_results() = [<a href="#type-reg_result">reg_result()</a>]
+</code></pre>
+
+
+
+
+### <a name="type-send_result">send_result()</a> ###
+
+
+<pre><code>
+send_result() = <a href="#type-sync_send_result">sync_send_result()</a> | <a href="#type-async_send_result">async_send_result()</a>
 </code></pre>
 
 
@@ -241,7 +394,7 @@ reg_id_keys() = [<a href="sc_push_reg_db.md#type-reg_id_key">sc_push_reg_db:reg_
 service() = atom()
 </code></pre>
 
-e.g. apns, gcm
+Service type, e.g. apns, gcm
 
 
 
@@ -352,6 +505,7 @@ sync_send_results() = [<a href="#type-sync_send_result">sync_send_result()</a>]
 tag() = binary()
 </code></pre>
 
+Opaque group identifier.
 
 
 
@@ -392,6 +546,7 @@ tags() = [<a href="#type-tag">tag()</a>]
 token() = binary()
 </code></pre>
 
+APNS token as hex string, GCM registration id.
 
 
 
@@ -489,9 +644,10 @@ Deregister multiple registered IDs.
 ### get_all_service_configs/0 ###
 
 <pre><code>
-get_all_service_configs() -&gt; [<a href="#type-std_proplist">std_proplist()</a>]
+get_all_service_configs() -&gt; SvcConfigs
 </code></pre>
-<br />
+
+<ul class="definitions"><li><code>SvcConfigs = [<a href="#type-std_proplist">std_proplist()</a>]</code></li></ul>
 
 Get all service configurations
 
@@ -537,9 +693,10 @@ same tag.
 ### get_service_config/1 ###
 
 <pre><code>
-get_service_config(Service::term()) -&gt; {ok, <a href="#type-std_proplist">std_proplist()</a>} | {error, term()}
+get_service_config(Service) -&gt; Result
 </code></pre>
-<br />
+
+<ul class="definitions"><li><code>Service = term()</code></li><li><code>Result = {ok, <a href="#type-std_proplist">std_proplist()</a>} | {error, term()}</code></li></ul>
 
 Get service configuration
 
@@ -550,9 +707,10 @@ __See also:__ [start_service/1](#start_service-1).
 ### get_session_pid/1 ###
 
 <pre><code>
-get_session_pid(Name::atom()) -&gt; pid() | undefined
+get_session_pid(Name) -&gt; Result
 </code></pre>
-<br />
+
+<ul class="definitions"><li><code>Name = atom()</code></li><li><code>Result = pid() | undefined</code></li></ul>
 
 Get pid of named session.
 
@@ -561,9 +719,10 @@ Get pid of named session.
 ### make_service_child_spec/1 ###
 
 <pre><code>
-make_service_child_spec(Opts::<a href="sc_types.md#type-proplist">sc_types:proplist</a>(atom(), term())) -&gt; <a href="supervisor.md#type-child_spec">supervisor:child_spec()</a>
+make_service_child_spec(Opts) -&gt; Result
 </code></pre>
-<br />
+
+<ul class="definitions"><li><code>Opts = <a href="#type-std_proplist">std_proplist()</a></code></li><li><code>Result = <a href="supervisor.md#type-child_spec">supervisor:child_spec()</a></code></li></ul>
 
 Make a supervisor child spec for a service. The name of the
 supervisor module is obtained from the API module, and is what will
@@ -603,9 +762,10 @@ return until all pending service requests have completed.
 ### quiesce_session/2 ###
 
 <pre><code>
-quiesce_session(Service::atom(), Name::atom()) -&gt; ok | {error, Reason::term()}
+quiesce_session(Service, Name) -&gt; Result
 </code></pre>
-<br />
+
+<ul class="definitions"><li><code>Service = atom()</code></li><li><code>Name = atom()</code></li><li><code>Result = ok | {error, Reason}</code></li><li><code>Reason = term()</code></li></ul>
 
 Quiesce session. This puts the session in a state that rejects new
 push requests, but continues to service in-flight requests.  Once there are
@@ -725,9 +885,10 @@ __See also:__ [register_id/1](#register_id-1).
 ### register_service/1 ###
 
 <pre><code>
-register_service(Svc::<a href="sc_types.md#type-proplist">sc_types:proplist</a>(atom(), term())) -&gt; ok
+register_service(Svc) -&gt; ok
 </code></pre>
-<br />
+
+<ul class="definitions"><li><code>Svc = <a href="#type-std_proplist">std_proplist()</a></code></li></ul>
 
 Register a service in the service configuration registry.
 
@@ -791,9 +952,10 @@ send(Notification, Opts) -&gt; Result
 ### start_service/1 ###
 
 <pre><code>
-start_service(ServiceOpts::<a href="sc_types.md#type-proplist">sc_types:proplist</a>(atom(), term())) -&gt; {ok, pid()} | {error, term()}
+start_service(ServiceOpts) -&gt; Result
 </code></pre>
-<br />
+
+<ul class="definitions"><li><code>ServiceOpts = <a href="#type-std_proplist">std_proplist()</a></code></li><li><code>Result = {ok, pid()} | {error, term()}</code></li></ul>
 
 Start a push service.
 
@@ -880,9 +1042,10 @@ started. See <code>start_session/1</code> for details.
 ### start_session/2 ###
 
 <pre><code>
-start_session(Service::atom(), Opts::list()) -&gt; {ok, pid()} | {error, already_started} | {error, Reason::term()}
+start_session(Service, Opts) -&gt; Result
 </code></pre>
-<br />
+
+<ul class="definitions"><li><code>Service = atom()</code></li><li><code>Opts = <a href="#type-std_proplist">std_proplist()</a></code></li><li><code>Result = {ok, Pid} | {error, Reason}</code></li><li><code>Pid = pid()</code></li><li><code>Reason = term()</code></li></ul>
 
 Start named session as described in the options proplist `Opts`.
 `config` is service-dependent.
@@ -968,9 +1131,10 @@ Use `sc_push_svc_apnsv3` instead.
 ### stop_service/1 ###
 
 <pre><code>
-stop_service(Id::pid() | <a href="#type-child_id">child_id()</a>) -&gt; ok | {error, term()}
+stop_service(Id) -&gt; Result
 </code></pre>
-<br />
+
+<ul class="definitions"><li><code>Id = pid() | <a href="#type-child_id">child_id()</a></code></li><li><code>Result = ok | {error, term()}</code></li></ul>
 
 Stops a service and all sessions for that service.
 
@@ -979,9 +1143,10 @@ Stops a service and all sessions for that service.
 ### stop_session/2 ###
 
 <pre><code>
-stop_session(Service::atom(), Name::atom()) -&gt; ok | {error, Reason::term()}
+stop_session(Service, Name) -&gt; Result
 </code></pre>
-<br />
+
+<ul class="definitions"><li><code>Service = atom()</code></li><li><code>Name = atom()</code></li><li><code>Result = ok | {error, Reason}</code></li><li><code>Reason = term()</code></li></ul>
 
 Stop named session.
 

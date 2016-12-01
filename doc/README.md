@@ -136,5 +136,6 @@ Notification = [
 <tr><td><a href="sc_push_wm_send_svc_appid_tok.md" class="module">sc_push_wm_send_svc_appid_tok</a></td></tr>
 <tr><td><a href="sc_push_wm_send_svc_tok.md" class="module">sc_push_wm_send_svc_tok</a></td></tr>
 <tr><td><a href="sc_push_wm_send_tag.md" class="module">sc_push_wm_send_tag</a></td></tr>
-<tr><td><a href="sc_push_wm_sup.md" class="module">sc_push_wm_sup</a></td></tr></table>
+<tr><td><a href="sc_push_wm_sup.md" class="module">sc_push_wm_sup</a></td></tr>
+<tr><td><a href="sc_push_wm_version.md" class="module">sc_push_wm_version</a></td></tr></table>
 

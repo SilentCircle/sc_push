@@ -195,6 +195,7 @@
         get_registration_info_by_svc_tok/2,
         get_service_config/1,
         get_all_service_configs/0,
+        get_version/0,
         make_service_child_spec/1
     ]).
 
@@ -437,6 +438,22 @@ get_service_config(Service) ->
       SvcConfigs :: [std_proplist()].
 get_all_service_configs() ->
     sc_push_lib:get_all_service_configs().
+
+%%--------------------------------------------------------------------
+%% @doc Get scpf version string as a binary.
+%% In the unlikely event that an error occurs, the
+%% version will be returned as `<<"?.?.?">>'.
+%% @end
+%%--------------------------------------------------------------------
+-spec get_version() -> Result when Result :: binary().
+get_version() ->
+    try
+        Apps = application:which_applications(),
+        sc_util:to_bin(get_app_version(scpf, Apps))
+    catch
+        _:_ -> % Maybe timeout, maybe undefined app
+            <<"?.?.?">>
+    end.
 
 %%--------------------------------------------------------------------
 %% @doc Start named session as described in the options proplist `Opts'.
@@ -1007,4 +1024,12 @@ compare_tokens(PL1, PL2) ->
 %% @private
 get_svc_tok(PL) ->
     {sc_util:req_val(service, PL), sc_util:req_val(token, PL)}.
+
+%% @private
+get_app_version(App, [{App, _Desc, Vsn}|_T]) ->
+    Vsn;
+get_app_version(App, [_H|T]) ->
+    get_app_version(App, T);
+get_app_version(_App, []) ->
+    undefined.
 

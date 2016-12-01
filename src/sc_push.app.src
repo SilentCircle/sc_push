@@ -30,6 +30,7 @@
                     sc_push_wm_send_tag,
                     sc_push_wm_send_svc_tok,
                     sc_push_wm_send_svc_appid_tok,
+                    sc_push_wm_version,
                     sc_push_reg_wm_service,
                     sc_push_reg_wm_tag,
                     sc_push_reg_wm_device,

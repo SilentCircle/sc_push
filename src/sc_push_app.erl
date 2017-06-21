@@ -38,13 +38,12 @@
 -spec start(StartType::start_type(), StartArgs::term()) ->
     {ok, pid(), list()} | {error, term()}.
 start(_StartType, _StartArgs) ->
-    lager:debug("Starting mnesia"),
-    _ = mnesia:start(), % ... just in case
-    _ = ensure_schema(),
     {ok, App} = application:get_application(?MODULE),
     Opts = application:get_all_env(App),
     lager:info("Starting supervisor"),
+
     {ok, Pid} = sc_push_sup:start_link(Opts),
+
     lager:info("Started sc_push_sup, pid ~p", [Pid]),
     {ok, Pid, [{sup_pid, Pid}, {env, Opts}]}.
 
@@ -97,22 +96,3 @@ stop(_State) ->
 config_change(_Changed, _New, _Removed) ->
     ok.
 
-%%====================================================================
-%% Internal functions
-%%====================================================================
-% I really don't like this, but it's a pain to have to run an installer
-% just to get tests to work.
-% TODO: Work out a better way,.
-ensure_schema() ->
-    Node = node(),
-    try mnesia:table_info(schema, disc_copies) of
-        [] ->
-            {atomic, ok} = mnesia:change_table_copy_type(schema, Node, disc_copies);
-        [_|_] = L ->
-            true = lists:member(Node, L)
-    catch
-        _:{aborted, {no_exists, _, _}} ->
-            _ = mnesia:stop(),
-            ok = mnesia:create_schema([Node]),
-            mnesia:start()
-    end.

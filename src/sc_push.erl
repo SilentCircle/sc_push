@@ -249,24 +249,7 @@
              ]).
 
 start() ->
-    ensure_started(sasl),
-    ensure_started(compiler),
-    ensure_started(syntax_tools),
-    ensure_started(goldrush),
-    ensure_started(lager),
-    ensure_started(crypto),
-    ensure_started(public_key),
-    ensure_started(ssl),
-    ensure_started(inets),
-    _ = mnesia:create_schema([node()]),
-    ensure_started(mnesia),
-    ensure_started(unsplit),
-    ensure_started(mochiweb),
-    ensure_started(webmachine),
-    ensure_started(jsx),
-    ensure_started(sc_util),
-    ensure_started(sc_push_lib),
-    ensure_started(sc_push).
+    application:ensure_all_started(sc_push).
 
 %%--------------------------------------------------------------------
 %% @doc Start a push service.
@@ -846,16 +829,6 @@ get_service_name(Service, AppId, Dist) ->
 %% @private
 iolist_to_latin1_atom(IOList) ->
     binary_to_atom(list_to_binary(IOList), latin1).
-
-%%--------------------------------------------------------------------
-%% @private
-ensure_started(App) ->
-    case application:start(App) of
-        ok ->
-            ok;
-        {error, {already_started, App}} ->
-            ok
-    end.
 
 %%--------------------------------------------------------------------
 %% @private

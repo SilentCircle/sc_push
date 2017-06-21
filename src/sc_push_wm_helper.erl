@@ -118,6 +118,10 @@ config_debug(Config) ->
 %% @doc Check the return of the sc_push_reg_api lookup
 check_reg_lookup(notfound) ->
     {halt, 404};
+check_reg_lookup({error, disconnected}) ->
+    {halt, 503};
+check_reg_lookup({error, _}=Error) ->
+    Error;
 check_reg_lookup(Props) when is_list(Props) ->
     [encode_props(Props)].
 

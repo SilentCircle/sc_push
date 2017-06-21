@@ -44,8 +44,6 @@
 %% ===================================================================
 
 start_link(Opts) when is_list(Opts) ->
-    check_mnesia_running(),
-    ok = sc_push_reg_api:init(),
     case supervisor:start_link({local, ?SERVER}, ?MODULE, Opts) of
         {ok, _} = Res ->
             _ = register_services(Opts),
@@ -90,13 +88,3 @@ service_child_specs(Opts) ->
 register_services(Opts) ->
     Services = sc_util:val(services, Opts, []),
     [sc_push:register_service(Svc) || Svc <- Services].
-
-check_mnesia_running() ->
-    Apps = application:which_applications(),
-    case lists:keysearch(mnesia, 1, Apps) of
-        {value, _} ->
-            ok;
-        false ->
-            throw({?MODULE, mnesia_not_started})
-    end.
-

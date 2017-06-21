@@ -59,7 +59,11 @@ suite() -> [
         {timetrap, {seconds, 30}},
         {require, services},
         {require, registration},
-        {require, wm_config}
+        {require, wm_config},
+        {require, databases},
+        {require, connect_info},
+        {require, lager},
+        {require, sasl}
     ].
 
 %%--------------------------------------------------------------------
@@ -77,6 +81,10 @@ suite() -> [
 %% variable, but should NOT alter/remove any existing entries.
 %%--------------------------------------------------------------------
 init_per_suite(Config) ->
+    Sasl = ct:get_config(sasl),
+    ct:pal("SASL: ~p~n", [Sasl]),
+
+    set_all_env(sasl, Sasl),
     ensure_started(sasl),
     ok = ssl:start(),
     ensure_started(inets),
@@ -90,10 +98,24 @@ init_per_suite(Config) ->
 
     WmConfig = template_replace(ct:get_config(wm_config), Config),
     ct:pal("WmConfig : ~p~n", [WmConfig]),
+    export_wm_config(WmConfig),
+
+    LagerConfig = lager_config(Config, ct:get_config(lager)),
+    ct:pal("Lager: ~p~n", [LagerConfig]),
+
+    Databases = ct:get_config(databases),
+    ct:pal("Databases: ~p~n", [Databases]),
+
+    ConnectInfo = ct:get_config(connect_info),
+    ct:pal("connect_info config: ~p~n", [ConnectInfo]),
 
     [{registration, Registration},
      {services, Services},
-     {wm_config, WmConfig} | Config].
+     {initial_services, Services},
+     {wm_config, WmConfig},
+     {lager_config, LagerConfig},
+     {databases, Databases},
+     {connect_info, ConnectInfo} | Config].
 
 %%--------------------------------------------------------------------
 %% Function: end_per_suite(Config0) -> void() | {save_config,Config1}
@@ -123,11 +145,26 @@ end_per_suite(_Config) ->
 %%
 %% Description: Initialization before each test case group.
 %%--------------------------------------------------------------------
+init_per_group(Group, Config) when Group =:= internal_db;
+                                   Group =:= external_db ->
+    ct:pal("===== Running test group ~p =====", [Group]),
+    DBMap = value(databases, Config),
+    DBInfo = maps:get(Group, DBMap),
+    NewConfig = lists:keystore(dbinfo, 1, Config, {dbinfo, DBInfo}),
+    case check_db_availability(NewConfig) of
+        ok ->
+            init_per_group(undefined, NewConfig);
+        Error ->
+            Reason = lists:flatten(
+                       io_lib:format("Cannot communicate with ~p,"
+                                     " error: ~p", [Group, Error])),
+            {skip, Reason}
+    end;
 init_per_group(_GroupName, Config) ->
     application:load(lager),
-    [ok = application:set_env(lager, K, V) || {K, V} <- lager_config(Config)],
-    {ok, _Started} = application:ensure_all_started(lager),
-    Config.
+    set_all_env(lager, value(lager_config, Config)),
+    {ok, LagerApps} = application:ensure_all_started(lager),
+    lists:keystore(lager_apps, 1, Config, {lager_apps, LagerApps}).
 
 %%--------------------------------------------------------------------
 %% Function: end_per_group(GroupName, Config0) ->
@@ -140,14 +177,12 @@ init_per_group(_GroupName, Config) ->
 %%
 %% Description: Cleanup after each test case group.
 %%--------------------------------------------------------------------
-end_per_group(_GroupName, _Config) ->
-    application:stop(lager),
-    application:stop(goldrush),
-    application:stop(syntax_tools),
-    application:stop(compiler),
-    %ok = application:unload(lager),
-    %code:purge(lager_console_backend), % ct gives error otherwise
-    ok.
+end_per_group(_GroupName, Config) ->
+    Apps = lists:reverse(value(lager_apps, Config)),
+    lists:foreach(fun(App) ->
+                          ok = application:stop(App)
+                  end, Apps),
+    {save_config, lists:keydelete(lager_apps, 1, Config)}.
 
 %%--------------------------------------------------------------------
 %% Function: init_per_testcase(TestCase, Config0) ->
@@ -170,9 +205,8 @@ init_per_testcase(start_and_stop_from_config_test, Config) ->
 init_per_testcase(start_and_stop_service_test, Config) ->
     init_per_testcase_no_start_services(Config);
 init_per_testcase(_Case, Config0) ->
-    Config = init_per_testcase_common(Config0),
-    OverrideConfig = lists:keystore(services, 1, Config, {services, []}), % Will not pre-start services
-    {ok, _FakeAppPid} = fake_app_start(OverrideConfig),
+    OverrideConfig = lists:keystore(services, 1, Config0, {services, []}), % Will not pre-start services
+    Config = init_per_testcase_common(OverrideConfig),
     Services = value(services, Config),
     start_services(Services),
     Config.
@@ -198,8 +232,11 @@ end_per_testcase(start_and_stop_service_test, Config) ->
 end_per_testcase(_Case, Config) ->
     Services = value(services, Config),
     stop_services(Services),
-    ok = fake_app_stop(sc_push_suite_fake_app),
-    end_per_testcase_common(Config).
+    % Restore original services
+    InitialServices = value(initial_services, Config),
+    NewConfig = lists:keystore(services, 1, Config, {services, InitialServices}),
+    %ok = fake_app_stop(sc_push_suite_fake_app),
+    end_per_testcase_common(NewConfig).
 
 %%--------------------------------------------------------------------
 %% Function: groups() -> [Group]
@@ -224,42 +261,42 @@ end_per_testcase(_Case, Config) ->
 %%--------------------------------------------------------------------
 groups() ->
     [
-        {
-            service,
-            [],
-            [
-                {group, clients},
-                {group, async_clients},
-                {group, rest_api}
-            ]
-        },
-        {
-            clients,
-            [],
-            [
-                start_and_stop_from_config_test,
-                start_and_stop_service_test,
-                send_msg_test,
-                send_msg_fail_test,
-                send_msg_no_reg_test
-            ]
-        },
-        {
-            async_clients,
-            [],
-            [
-                async_send_msg_test
-            ]
-        },
-        {
-            rest_api,
-            [],
-            [
-                get_reg_id_test,
-                reg_device_id_test
-            ]
-        }
+     {service, [], [
+                    {internal_db, [], service_test_groups()},
+                    {external_db, [], service_test_groups()}
+                   ]
+     }
     ].
+
+service_test_groups() ->
+      [
+       client_test_group(),
+       async_client_test_group(),
+       rest_api_test_group()
+      ].
+
+client_test_group() ->
+    {clients, [], [
+                   start_and_stop_from_config_test,
+                   start_and_stop_service_test,
+                   send_msg_test,
+                   send_msg_fail_test,
+                   send_msg_no_reg_test
+                  ]
+    }.
+
+async_client_test_group() ->
+    {async_clients, [], [
+                         async_send_msg_test
+                        ]
+    }.
+
+rest_api_test_group() ->
+    {rest_api, [], [
+                    get_reg_id_test,
+                    reg_device_id_test
+                   ]
+    }.
 
 %%--------------------------------------------------------------------
 %% Function: all() -> GroupsAndTestCases | {skip,Reason}
@@ -277,8 +314,22 @@ groups() ->
 %%--------------------------------------------------------------------
 all() ->
     [
-        {group, service}
+        {group, service, default, [{internal_db, []},
+                                   {external_db, []}]}
     ].
+
+%%--------------------------------------------------------------------
+group(internal_db) ->
+    [
+     {userdata, [{internal_db, mnesia},
+                 {external_db, mnesia}]}
+    ];
+group(external_db) ->
+    [
+     {userdata, [{internal_db, mnesia},
+                 {external_db, postgres}]}
+    ];
+group(_) -> [].
 
 %%--------------------------------------------------------------------
 %% TEST CASES
@@ -298,7 +349,7 @@ start_and_stop_from_config_test(doc) ->
 start_and_stop_from_config_test(suite) ->
     [];
 start_and_stop_from_config_test(Config) ->
-    ok = fake_app_stop(sc_push_suite_fake_app),
+    %ok = fake_app_stop(sc_push_suite_fake_app),
     Config.
 
 %%--------------------------------------------------------------------
@@ -516,38 +567,37 @@ reg_device_id_test(Config) ->
 %%====================================================================
 init_per_testcase_no_start_services(Config0) ->
     (catch end_per_testcase_no_start_services(Config0)),
-    Config = init_per_testcase_common(Config0),
-    OverrideConfig = lists:keystore(services, 1, Config, {services, []}), % Will not pre-start services
-    {ok, _FakeAppPid} = fake_app_start(OverrideConfig),
-    Config.
+    OverrideConfig = lists:keystore(services, 1, Config0, {services, []}), % Will not pre-start services
+    init_per_testcase_common(OverrideConfig).
 
 end_per_testcase_no_start_services(Config) ->
-    ok = fake_app_stop(sc_push_suite_fake_app),
     end_per_testcase_common(Config).
 
 init_per_testcase_common(Config) ->
-    PrivDir = value(priv_dir, Config), % Standard CT variable
     (catch end_per_testcase_common(Config)),
-    ok = application:set_env(mnesia, dir, PrivDir),
-    ok = mnesia:create_schema([node()]),
-    ok = mnesia:start(),
-    ensure_started(xmerl),
-    ensure_started(mochiweb),
-    ensure_started(webmachine),
-    ensure_started(jsx),
-    ensure_started(sc_util),
-    ensure_started(sc_push_lib),
-    Config.
+    DBInfo = value(dbinfo, Config),
+    ok = application:set_env(sc_push_lib, db_pools, db_pools(DBInfo, Config)),
+    {ok, DbPools} = application:get_env(sc_push_lib, db_pools),
+    ct:pal("init_per_testcase_common: DbPools: ~p", [DbPools]),
+
+    db_create(Config),
+
+    Services = value(services, Config),
+    ct:pal("init_per_testcase_common: services: ~p", [Services]),
+    ok = application:set_env(sc_push, services, Services),
+
+    {ok, Apps} = application:ensure_all_started(sc_push),
+
+    ct:pal("init_per_testcase_common: started apps: ~p", [Apps]),
+    Started = {apps, Apps},
+    lists:keystore(apps, 1, Config, Started).
 
 end_per_testcase_common(Config) ->
-    application:stop(sc_push_lib),
-    application:stop(sc_util),
-    application:stop(jsx),
-    application:stop(webmachine),
-    application:stop(mochiweb),
-    ensure_started(xmerl),
-    stopped = mnesia:stop(),
-    ok = mnesia:delete_schema([node()]),
+    Apps = lists:reverse(value(apps, Config)),
+    lists:foreach(fun(App) ->
+                          ok = application:stop(App)
+                  end, Apps),
+    db_destroy(Config),
     Config.
 
 start_service(Opts) when is_list(Opts) ->
@@ -595,7 +645,11 @@ deregister_ids(RegPL) ->
 %% process.
 %%--------------------------------------------------------------------
 fake_app_start(Config) ->
-    Opts = [KV || K <- [services, wm_config], begin KV = lists:keyfind(K, 1, Config), KV /= false end],
+    Opts = [KV || K <- [services, wm_config],
+                  begin
+                      KV = lists:keyfind(K, 1, Config),
+                      KV /= false
+                  end],
     Pid = proc_lib:spawn(?MODULE, fake_app, [self(), Opts]),
     register(sc_push_suite_fake_app, Pid),
     ct:pal("Starting fake app (~p)~n", [Pid]),
@@ -678,26 +732,24 @@ fake_app_loop(SupPid) ->
 %%====================================================================
 %% Lager support
 %%====================================================================
-lager_config(Config) ->
+lager_config(Config, RawLagerConfig) ->
     PrivDir = value(priv_dir, Config), % Standard CT variable
-    [
-     {handlers, [
-                 {lager_console_backend, info},
-                 {lager_file_backend, [
-                                       {file, filename:join(PrivDir, "error.log")},
-                                       {level, error}
-                                      ]
-                 },
-                 {lager_file_backend, [
-                                       {file, filename:join(PrivDir, "console.log")},
-                                       {level, debug}
-                                      ]
-                 }
-                ]
-     },
-     %% Whether to write a crash log, and where. Undefined means no crash logger.
-     {crash_log, filename:join(PrivDir, "crash.log")}
-    ].
+
+    Replacements = [
+                    {error_log_file, filename:join(PrivDir, "error.log")},
+                    {console_log_file, filename:join(PrivDir, "console.log")},
+                    {crash_log_file, filename:join(PrivDir, "crash.log")}
+                   ],
+
+    replace_template_vars(RawLagerConfig, Replacements).
+
+replace_template_vars(RawLagerConfig, Replacements) ->
+    Ctx = dict:from_list(Replacements),
+    Str = lists:flatten(io_lib:fwrite("~1000p~s", [RawLagerConfig, "."])),
+    SConfig = mustache:render(Str, Ctx),
+    {ok, Tokens, _} = erl_scan:string(SConfig),
+    {ok, LagerConfig} = erl_parse:parse_term(Tokens),
+    LagerConfig.
 
 %%====================================================================
 %% General helper functions
@@ -799,4 +851,104 @@ uuid_to_str(UUID) ->
 
 make_uuid_str() ->
     uuid_to_str(uuid:get_v4()).
+
+%%--------------------------------------------------------------------
+db_create(Config) ->
+    DBInfo = value(dbinfo, Config),
+    DB = maps:get(db, DBInfo),
+    db_create(DB, DBInfo, Config).
+
+db_create(mnesia, _DBInfo, Config) ->
+    PrivDir = value(priv_dir, Config), % Standard CT variable
+    MnesiaDir = filename:join(PrivDir, "mnesia"),
+    ok = application:set_env(mnesia, dir, MnesiaDir),
+    db_destroy(mnesia, _DBInfo, Config),
+    ok = mnesia:create_schema([node()]);
+db_create(DB, DBInfo, Config) ->
+    db_create(mnesia, DBInfo, Config),
+    clear_external_db(DB, DBInfo, Config).
+
+%%--------------------------------------------------------------------
+db_destroy(Config) ->
+    DBInfo = value(dbinfo, Config),
+    DB = maps:get(db, DBInfo),
+    db_destroy(DB, DBInfo, Config).
+
+db_destroy(mnesia, _DBInfo, _Config) ->
+    mnesia:stop(),
+    ok = mnesia:delete_schema([node()]);
+db_destroy(DB, DBInfo, Config) ->
+    db_destroy(mnesia, DBInfo, Config),
+    clear_external_db(DB, DBInfo, Config).
+
+%%--------------------------------------------------------------------
+clear_external_db(postgres=EDB, _DBInfo, Config) ->
+    ConnParams = db_config(EDB, Config),
+    Tables = ["scpf.push_tokens"],
+    case epgsql:connect(ConnParams) of
+        {ok, Conn} ->
+            lists:foreach(
+              fun(Table) ->
+                      {ok, _} = epgsql:squery(Conn, "delete from " ++ Table)
+              end, Tables),
+            ok = epgsql:close(Conn);
+        Error ->
+            ct:fail("~p error: ~p", [EDB, Error])
+    end.
+
+%%--------------------------------------------------------------------
+check_db_availability(Config) ->
+    DBInfo = value(dbinfo, Config),
+    DB = maps:get(db, DBInfo),
+    check_db_availability(DB, Config).
+
+check_db_availability(mnesia, _Config) ->
+    ok;
+check_db_availability(postgres, Config) ->
+    ConnParams = db_config(postgres, Config),
+    try epgsql:connect(ConnParams) of
+        {ok, Conn} ->
+            ok = epgsql:close(Conn);
+        Error ->
+            Error
+    catch
+        _:Reason ->
+            {error, Reason}
+    end.
+
+%%--------------------------------------------------------------------
+db_pools(#{db := DB, mod := DBMod}, Config) ->
+    [
+     {sc_push_reg_pool, % name
+      [ % sizeargs
+       {size, 10},
+       {max_overflow, 20}
+      ],
+      [ % workerargs
+       {db_mod, DBMod},
+       {db_config, db_config(DB, Config)}
+      ]}
+    ].
+
+%%--------------------------------------------------------------------
+db_config(DB, Config) ->
+    maps:get(DB, value(connect_info, Config), []).
+
+%%--------------------------------------------------------------------
+export_wm_config(WmConfig) ->
+    Cfg = [
+           {"WEBMACHINE_IP",        ip},
+           {"WEBMACHINE_PORT",      port},
+           {"WEBMACHINE_DISPATCH",  dispatch}
+          ],
+    lists:foreach(fun({EnvVar, Key}) ->
+                          true = os:putenv(EnvVar, sc_util:to_list(
+                                                     value(Key, WmConfig)))
+                  end, Cfg).
+
+%%--------------------------------------------------------------------
+set_all_env(App, Props) ->
+    lists:foreach(fun({K, V}) ->
+                          ok = application:set_env(App, K, V)
+                  end, Props).
 

@@ -4,7 +4,7 @@
 
 Copyright (c) 2016 Silent Circle
 
-__Version:__ 1.1.6
+__Version:__ 2.0.0
 
 __Authors:__ Edwin Fine ([`efine@silentcircle.com`](mailto:efine@silentcircle.com)).
 
@@ -121,21 +121,21 @@ Notification = [
 
 
 <table width="100%" border="0" summary="list of modules">
-<tr><td><a href="http://github.com/SilentCircle/sc_push/blob/feature/add-postgresql-support/doc/sc_push.md" class="module">sc_push</a></td></tr>
-<tr><td><a href="http://github.com/SilentCircle/sc_push/blob/feature/add-postgresql-support/doc/sc_push_app.md" class="module">sc_push_app</a></td></tr>
-<tr><td><a href="http://github.com/SilentCircle/sc_push/blob/feature/add-postgresql-support/doc/sc_push_reg_resource.md" class="module">sc_push_reg_resource</a></td></tr>
-<tr><td><a href="http://github.com/SilentCircle/sc_push/blob/feature/add-postgresql-support/doc/sc_push_reg_wm_device.md" class="module">sc_push_reg_wm_device</a></td></tr>
-<tr><td><a href="http://github.com/SilentCircle/sc_push/blob/feature/add-postgresql-support/doc/sc_push_reg_wm_service.md" class="module">sc_push_reg_wm_service</a></td></tr>
-<tr><td><a href="http://github.com/SilentCircle/sc_push/blob/feature/add-postgresql-support/doc/sc_push_reg_wm_tag.md" class="module">sc_push_reg_wm_tag</a></td></tr>
-<tr><td><a href="http://github.com/SilentCircle/sc_push/blob/feature/add-postgresql-support/doc/sc_push_sup.md" class="module">sc_push_sup</a></td></tr>
-<tr><td><a href="http://github.com/SilentCircle/sc_push/blob/feature/add-postgresql-support/doc/sc_push_svc_null.md" class="module">sc_push_svc_null</a></td></tr>
-<tr><td><a href="http://github.com/SilentCircle/sc_push/blob/feature/add-postgresql-support/doc/sc_push_svc_null_srv.md" class="module">sc_push_svc_null_srv</a></td></tr>
-<tr><td><a href="http://github.com/SilentCircle/sc_push/blob/feature/add-postgresql-support/doc/sc_push_wm_common.md" class="module">sc_push_wm_common</a></td></tr>
-<tr><td><a href="http://github.com/SilentCircle/sc_push/blob/feature/add-postgresql-support/doc/sc_push_wm_helper.md" class="module">sc_push_wm_helper</a></td></tr>
-<tr><td><a href="http://github.com/SilentCircle/sc_push/blob/feature/add-postgresql-support/doc/sc_push_wm_send_device.md" class="module">sc_push_wm_send_device</a></td></tr>
-<tr><td><a href="http://github.com/SilentCircle/sc_push/blob/feature/add-postgresql-support/doc/sc_push_wm_send_svc_appid_tok.md" class="module">sc_push_wm_send_svc_appid_tok</a></td></tr>
-<tr><td><a href="http://github.com/SilentCircle/sc_push/blob/feature/add-postgresql-support/doc/sc_push_wm_send_svc_tok.md" class="module">sc_push_wm_send_svc_tok</a></td></tr>
-<tr><td><a href="http://github.com/SilentCircle/sc_push/blob/feature/add-postgresql-support/doc/sc_push_wm_send_tag.md" class="module">sc_push_wm_send_tag</a></td></tr>
-<tr><td><a href="http://github.com/SilentCircle/sc_push/blob/feature/add-postgresql-support/doc/sc_push_wm_sup.md" class="module">sc_push_wm_sup</a></td></tr>
-<tr><td><a href="http://github.com/SilentCircle/sc_push/blob/feature/add-postgresql-support/doc/sc_push_wm_version.md" class="module">sc_push_wm_version</a></td></tr></table>
+<tr><td><a href="http://github.com/SilentCircle/sc_push/blob/master/doc/sc_push.md" class="module">sc_push</a></td></tr>
+<tr><td><a href="http://github.com/SilentCircle/sc_push/blob/master/doc/sc_push_app.md" class="module">sc_push_app</a></td></tr>
+<tr><td><a href="http://github.com/SilentCircle/sc_push/blob/master/doc/sc_push_reg_resource.md" class="module">sc_push_reg_resource</a></td></tr>
+<tr><td><a href="http://github.com/SilentCircle/sc_push/blob/master/doc/sc_push_reg_wm_device.md" class="module">sc_push_reg_wm_device</a></td></tr>
+<tr><td><a href="http://github.com/SilentCircle/sc_push/blob/master/doc/sc_push_reg_wm_service.md" class="module">sc_push_reg_wm_service</a></td></tr>
+<tr><td><a href="http://github.com/SilentCircle/sc_push/blob/master/doc/sc_push_reg_wm_tag.md" class="module">sc_push_reg_wm_tag</a></td></tr>
+<tr><td><a href="http://github.com/SilentCircle/sc_push/blob/master/doc/sc_push_sup.md" class="module">sc_push_sup</a></td></tr>
+<tr><td><a href="http://github.com/SilentCircle/sc_push/blob/master/doc/sc_push_svc_null.md" class="module">sc_push_svc_null</a></td></tr>
+<tr><td><a href="http://github.com/SilentCircle/sc_push/blob/master/doc/sc_push_svc_null_srv.md" class="module">sc_push_svc_null_srv</a></td></tr>
+<tr><td><a href="http://github.com/SilentCircle/sc_push/blob/master/doc/sc_push_wm_common.md" class="module">sc_push_wm_common</a></td></tr>
+<tr><td><a href="http://github.com/SilentCircle/sc_push/blob/master/doc/sc_push_wm_helper.md" class="module">sc_push_wm_helper</a></td></tr>
+<tr><td><a href="http://github.com/SilentCircle/sc_push/blob/master/doc/sc_push_wm_send_device.md" class="module">sc_push_wm_send_device</a></td></tr>
+<tr><td><a href="http://github.com/SilentCircle/sc_push/blob/master/doc/sc_push_wm_send_svc_appid_tok.md" class="module">sc_push_wm_send_svc_appid_tok</a></td></tr>
+<tr><td><a href="http://github.com/SilentCircle/sc_push/blob/master/doc/sc_push_wm_send_svc_tok.md" class="module">sc_push_wm_send_svc_tok</a></td></tr>
+<tr><td><a href="http://github.com/SilentCircle/sc_push/blob/master/doc/sc_push_wm_send_tag.md" class="module">sc_push_wm_send_tag</a></td></tr>
+<tr><td><a href="http://github.com/SilentCircle/sc_push/blob/master/doc/sc_push_wm_sup.md" class="module">sc_push_wm_sup</a></td></tr>
+<tr><td><a href="http://github.com/SilentCircle/sc_push/blob/master/doc/sc_push_wm_version.md" class="module">sc_push_wm_version</a></td></tr></table>
 

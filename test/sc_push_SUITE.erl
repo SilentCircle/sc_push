@@ -883,8 +883,10 @@ db_destroy(DB, DBInfo, Config) ->
 
 %%--------------------------------------------------------------------
 clear_external_db(postgres=EDB, _DBInfo, Config) ->
-    ConnParams = db_config(EDB, Config),
-    Tables = ["scpf.push_tokens"],
+    ConnParams = db_conn_info(EDB, Config),
+    TableCfg = db_table_config(EDB, Config),
+    Tables = [push_table_name(value(table_schema, TableCfg),
+                              value(table_name, TableCfg))],
     case epgsql:connect(ConnParams) of
         {ok, Conn} ->
             lists:foreach(
@@ -905,7 +907,7 @@ check_db_availability(Config) ->
 check_db_availability(mnesia, _Config) ->
     ok;
 check_db_availability(postgres, Config) ->
-    ConnParams = db_config(postgres, Config),
+    ConnParams = db_conn_info(postgres, Config),
     try epgsql:connect(ConnParams) of
         {ok, Conn} ->
             ok = epgsql:close(Conn);
@@ -933,6 +935,39 @@ db_pools(#{db := DB, mod := DBMod}, Config) ->
 %%--------------------------------------------------------------------
 db_config(DB, Config) ->
     maps:get(DB, value(connect_info, Config), []).
+
+%%--------------------------------------------------------------------
+db_conn_info(DB, Config) ->
+    case db_config(DB, Config) of
+        #{connection := ConnInfo} ->
+            ConnInfo;
+        ConnInfo when is_list(ConnInfo) ->
+            ConnInfo
+    end.
+
+%%--------------------------------------------------------------------
+db_table_config(DB, Config) ->
+    DefCfg = default_table_config(),
+    case db_config(DB, Config) of
+        #{}=M ->
+            L = maps:get(table_config, M, []),
+            add_default_props(L, DefCfg);
+        _ ->
+            DefCfg
+    end.
+
+%%--------------------------------------------------------------------
+add_default_props(Dest, Def) ->
+    lists:ukeymerge(1, lists:ukeysort(1, Dest), lists:ukeysort(1, Def)).
+
+%%--------------------------------------------------------------------
+default_table_config() ->
+    [{table_name, "push_tokens"},
+     {table_schema, "public"}].
+
+%%--------------------------------------------------------------------
+push_table_name(Schema, Name) ->
+    Schema ++ "." ++ Name.
 
 %%--------------------------------------------------------------------
 export_wm_config(WmConfig) ->
